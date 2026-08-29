@@ -1,0 +1,2403 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Minha Agenda</title>
+<meta name="theme-color" content="#6D5EF7" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="icon" href="./icons/icon-192.png" />
+<link rel="apple-touch-icon" href="./icons/icon-192.png" />
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Agenda" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Space+Grotesk:wght@500;600;700&family=Poppins:wght@500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Mulish:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#F5F6FA; --surface:#FFFFFF; --ink:#161821; --ink-soft:#6B7280; --line:#E8EAF1;
+    --accent:#6D5EF7; --accent-rgb:109,94,247;
+    --p-urgente:#FF5A72; --p-importante:#FFB020; --p-normal:#22C55E; --p-pessoal:#3B82F6;
+    --shadow-sm: 0 1px 2px rgba(22,24,33,.04), 0 2px 8px rgba(22,24,33,.04);
+    --shadow-md: 0 4px 10px rgba(22,24,33,.05), 0 12px 28px rgba(22,24,33,.07);
+    --font-display:'Sora', sans-serif; --font-body:'Inter', sans-serif; --font-mono:'JetBrains Mono', monospace;
+    --radius-lg:20px; --radius-md:14px; --radius-sm:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:var(--font-body); color:var(--ink); background:var(--bg);}
+
+  /* ---------- Auth screen ---------- */
+  .auth-shell{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+    background:radial-gradient(circle at 20% 15%, rgba(var(--accent-rgb),.14), transparent 45%), var(--bg); }
+  .auth-card{ background:var(--surface); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); padding:36px; width:100%; max-width:380px; }
+  .auth-card h1{ font-family:var(--font-display); font-weight:700; font-size:26px; margin:0 0 6px; }
+  .auth-card p{ color:var(--ink-soft); font-size:13.5px; margin:0 0 22px; }
+  .auth-card input{ width:100%; padding:12px 14px; border-radius:var(--radius-sm); border:1px solid var(--line); margin-bottom:12px; font-size:14px; background:var(--bg); }
+  .auth-card button.primary{ width:100%; border:none; background:var(--accent); color:#fff; padding:12px; border-radius:var(--radius-sm); font-weight:600; cursor:pointer; font-size:14.5px; }
+  .auth-toggle{ text-align:center; margin-top:16px; font-size:13px; color:var(--ink-soft); }
+  .auth-toggle a{ color:var(--accent); cursor:pointer; font-weight:600; text-decoration:none; }
+  .auth-error{ background:#FFEDEF; color:var(--p-urgente); border-radius:var(--radius-sm); padding:9px 11px; font-size:12.5px; margin-bottom:12px; display:none; }
+  .config-warning{ background:#FFEDEF; color:var(--p-urgente); border-radius:var(--radius-md); padding:18px; font-size:13.5px; line-height:1.55; max-width:520px; margin:60px auto; }
+  .config-warning code{ background:#fff; padding:2px 6px; border-radius:5px; }
+
+  /* ---------- App shell ---------- */
+  .app{ display:none; min-height:100vh; width:100%; flex-direction:column; }
+  .app.ready{ display:flex; }
+  .topbar{ display:flex; align-items:center; gap:12px; padding:18px 32px 0; }
+  .brand{ font-family:var(--font-display); font-weight:700; font-size:17px; letter-spacing:-.01em; }
+  .topbar-spacer{ flex:1; }
+  .user-email{ font-size:12.5px; color:var(--ink-soft); }
+  .icon-round-btn{ border:1px solid var(--line); background:var(--surface); width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:15px; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm); }
+  .icon-round-btn:hover{ background:var(--bg); }
+  .logout-btn{ border:1px solid var(--line); background:var(--surface); padding:8px 14px; border-radius:20px; cursor:pointer; font-size:12.5px; color:var(--ink-soft); box-shadow:var(--shadow-sm); }
+
+  /* ---------- Segmented pill nav ---------- */
+  .segmented-wrap{ padding:16px 32px 0; }
+  .segmented{ display:inline-flex; background:var(--surface); border-radius:999px; padding:5px; gap:2px; box-shadow:var(--shadow-sm); position:relative; }
+  .seg-btn{ position:relative; z-index:2; border:none; background:none; padding:9px 20px; border-radius:999px; font-family:var(--font-body); font-weight:600; font-size:13.5px; cursor:pointer; color:var(--ink-soft); transition:color .2s ease; }
+  .seg-btn.active{ color:#fff; }
+  .seg-indicator{ position:absolute; top:5px; left:5px; height:calc(100% - 10px); background:var(--accent); border-radius:999px; transition:transform .28s cubic-bezier(.4,0,.2,1), width .28s cubic-bezier(.4,0,.2,1); z-index:1; }
+
+  .main{ flex:1; min-width:0; padding:22px 32px 60px; max-width:1000px; width:100%; margin:0 auto; }
+
+  .search-wrap{ position:relative; max-width:440px; margin:0 0 22px; }
+  .search-box{ display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px 14px; box-shadow:var(--shadow-sm); }
+  .search-box svg{ flex-shrink:0; color:var(--ink-soft); }
+  .search-box input{ border:none; outline:none; background:none; font-family:var(--font-body); font-size:14px; width:100%; color:var(--ink); }
+  .search-results{ position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); box-shadow:var(--shadow-md); max-height:320px; overflow-y:auto; z-index:40; display:none; }
+  .search-results.open{ display:block; }
+  .search-result-item{ display:flex; align-items:center; gap:10px; padding:11px 13px; cursor:pointer; border-bottom:1px solid var(--line); }
+  .search-result-item:last-child{ border-bottom:none; }
+  .search-result-item:hover{ background:var(--bg); }
+  .search-tag{ font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:2px 8px; border-radius:8px; color:#fff; flex-shrink:0; }
+  .search-result-title{ font-size:13px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .search-result-date{ font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); flex-shrink:0; }
+  .search-empty{ padding:16px 12px; font-size:13px; color:var(--ink-soft); }
+
+  .view{ display:none; } .view.active{ display:block; animation:fade .18s ease; }
+  @keyframes fade{ from{opacity:0} to{opacity:1} }
+
+  /* signature: ambient accent glow behind page title */
+  .page-head{ position:relative; margin-bottom:20px; padding-top:6px; }
+  .page-head::before{
+    content:''; position:absolute; top:-30px; left:-20px; width:220px; height:140px;
+    background:radial-gradient(circle, rgba(var(--accent-rgb),.16), transparent 70%);
+    pointer-events:none; z-index:0;
+  }
+  h1.page-title{ position:relative; z-index:1; font-family:var(--font-display); font-weight:700; font-size:27px; margin:0 0 4px; letter-spacing:-.01em; }
+  .page-sub{ position:relative; z-index:1; color:var(--ink-soft); font-size:14px; margin:0; }
+
+  .reminders-banner{ display:none; flex-wrap:wrap; gap:8px; margin:18px 0 20px; padding:13px 15px; background:rgba(var(--accent-rgb),.08); border:1px solid rgba(var(--accent-rgb),.22); border-radius:var(--radius-md); }
+  .reminders-banner.show{ display:flex; }
+  .reminder-pill{ display:flex; align-items:center; gap:6px; background:var(--surface); border-radius:20px; padding:6px 13px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--line); box-shadow:var(--shadow-sm); }
+  .reminder-pill .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .reminder-pill.overdue{ border-color:var(--p-urgente); color:var(--p-urgente); }
+
+  .cal-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:12px; }
+  .cal-nav{ display:flex; align-items:center; gap:10px; }
+  .month-label{ font-family:var(--font-display); font-weight:700; font-size:19px; min-width:190px; text-align:center; }
+  .icon-btn{ border:1px solid var(--line); background:var(--surface); width:34px; height:34px; border-radius:var(--radius-sm); cursor:pointer; font-size:16px; color:var(--ink); display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-sm); }
+  .icon-btn:hover{ background:var(--bg); }
+  .btn-today{ border:1px solid var(--line); background:var(--surface); color:var(--ink); padding:8px 15px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-weight:600; box-shadow:var(--shadow-sm); }
+  .btn-today:hover{ background:var(--bg); }
+  .btn-primary{ border:none; background:var(--accent); color:#fff; padding:10px 18px; border-radius:var(--radius-sm); cursor:pointer; font-size:14px; font-weight:600; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(var(--accent-rgb),.3); }
+  .btn-primary:hover{ filter:brightness(1.06); }
+
+  .weekdays{ display:grid; grid-template-columns:repeat(7,1fr); font-family:var(--font-mono); font-size:11px; letter-spacing:.05em; color:var(--ink-soft); text-transform:uppercase; padding:0 2px; margin-bottom:8px; }
+  .weekdays div{ text-align:center; padding:4px 0; }
+  .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
+  .day-cell{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); min-height:96px; padding:9px; cursor:pointer; display:flex; flex-direction:column; gap:5px; transition:box-shadow .15s ease, transform .15s ease, border-color .15s ease; }
+  .day-cell:hover{ box-shadow:var(--shadow-md); border-color:transparent; transform:translateY(-1px); }
+  .day-cell.other-month{ opacity:.35; }
+  .day-cell.today{ border-color:var(--accent); border-width:2px; box-shadow:0 0 0 3px rgba(var(--accent-rgb),.12); }
+  .day-num{ font-family:var(--font-mono); font-weight:600; font-size:13px; }
+  .day-events{ display:flex; flex-direction:column; gap:3px; overflow:hidden; }
+  .event-chip{ font-size:11px; padding:2px 7px; border-radius:6px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600; }
+  .event-more{ font-size:11px; color:var(--ink-soft); font-family:var(--font-mono); }
+
+  .overlay{ position:fixed; inset:0; background:rgba(22,24,33,.4); backdrop-filter:blur(2px); display:none; align-items:center; justify-content:center; z-index:50; padding:16px; }
+  .overlay.open{ display:flex; }
+  .modal{ background:var(--surface); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); width:100%; max-width:440px; padding:26px; max-height:88vh; overflow-y:auto; }
+  .modal h2{ font-family:var(--font-display); font-weight:700; font-size:20px; margin:0 0 18px; }
+  .field{ margin-bottom:15px; }
+  .field label{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; text-transform:uppercase; letter-spacing:.03em; }
+  .field input[type=text], .field input[type=date], .field input[type=time], .field input[type=password], .field input[type=number], .field select{
+    width:100%; padding:10px 12px; border-radius:var(--radius-sm); border:1px solid var(--line); font-family:var(--font-body); font-size:14px; background:var(--bg); }
+  .field textarea{ width:100%; padding:10px 12px; border-radius:var(--radius-sm); border:1px solid var(--line); font-family:var(--font-body); font-size:13.5px; background:var(--bg); resize:vertical; min-height:64px; }
+  .field .helptext{ font-size:11.5px; color:var(--ink-soft); margin-top:6px; line-height:1.45; }
+  .color-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .color-opt{ display:flex; align-items:center; gap:6px; padding:7px 12px; border-radius:20px; border:2px solid transparent; cursor:pointer; font-size:12px; font-weight:600; background:var(--bg); }
+  .color-opt.selected{ border-color:var(--ink); }
+  .swatch{ width:12px; height:12px; border-radius:50%; display:inline-block; }
+  .modal-actions{ display:flex; justify-content:space-between; align-items:center; margin-top:18px; gap:10px; }
+  .link-btn{ background:none; border:none; color:var(--p-urgente); cursor:pointer; font-size:13px; font-weight:600; padding:6px 4px; }
+  .modal-actions-right{ display:flex; gap:8px; }
+  .btn-ghost{ border:1px solid var(--line); background:none; padding:10px 16px; border-radius:var(--radius-sm); cursor:pointer; font-size:14px; color:var(--ink); }
+
+  .day-panel-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:14px; max-height:220px; overflow-y:auto; }
+  .day-panel-item{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 11px; border-radius:var(--radius-sm); background:var(--bg); border-left:4px solid var(--p-normal); }
+  .day-panel-item .t{ font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); min-width:44px; }
+  .day-panel-item .title{ flex:1; font-size:13px; font-weight:600; }
+  .empty-note{ color:var(--ink-soft); font-size:13px; padding:10px 0; }
+
+  /* ---------- Theme picker (settings) ---------- */
+  .accent-swatches{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .accent-swatch, .bg-swatch{ width:32px; height:32px; border-radius:50%; cursor:pointer; border:2px solid transparent; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; }
+  .accent-swatch.selected, .bg-swatch.selected{ border-color:var(--ink); }
+  .accent-custom-row{ display:flex; align-items:center; gap:10px; }
+  .accent-custom-row input[type=color]{ width:40px; height:34px; border:1px solid var(--line); border-radius:8px; padding:2px; background:var(--bg); cursor:pointer; }
+  .font-preview{ border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px 14px; margin-top:8px; background:var(--bg); }
+  .font-preview .fp-title{ font-size:17px; font-weight:700; margin-bottom:3px; }
+  .font-preview .fp-body{ font-size:13px; color:var(--ink-soft); }
+
+  /* ---------- Subtasks ---------- */
+  .subtask-list{ display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
+  .subtask-edit-row{ display:flex; align-items:center; gap:8px; background:var(--bg); border-radius:var(--radius-sm); padding:7px 9px; }
+  .subtask-edit-row input[type=checkbox]{ width:16px; height:16px; flex-shrink:0; accent-color:var(--accent); }
+  .subtask-edit-row .st-title{ flex:1; font-size:13px; }
+  .subtask-edit-row .st-title.done{ text-decoration:line-through; color:var(--ink-soft); }
+  .subtask-del{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:14px; flex-shrink:0; }
+  .subtask-del:hover{ color:var(--p-urgente); }
+  .subtask-add-row{ display:flex; gap:8px; }
+  .subtask-add-row input{ flex:1; padding:9px 11px; border-radius:var(--radius-sm); border:1px solid var(--line); font-family:var(--font-body); font-size:13px; background:var(--bg); }
+  .subtask-add-row button{ border:1px solid var(--line); background:var(--surface); padding:9px 13px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-weight:600; white-space:nowrap; }
+
+  /* ---------- Tasks ---------- */
+  .task-toolbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
+  .board-switcher{ display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:14px; }
+  .board-pill{ display:flex; align-items:center; gap:7px; flex-shrink:0; background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:7px 8px 7px 16px; font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer; }
+  .board-pill.active{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .board-pill .board-edit-btn{ border:none; background:rgba(255,255,255,.25); width:20px; height:20px; border-radius:50%; font-size:10.5px; cursor:pointer; color:inherit; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .board-pill:not(.active) .board-edit-btn{ background:var(--bg); color:var(--ink-soft); }
+  .board-pill-add{ flex-shrink:0; background:none; border:1px dashed var(--line); border-radius:20px; padding:7px 16px; font-size:13px; font-weight:600; color:var(--ink-soft); cursor:pointer; }
+  .board-pill-add:hover{ background:var(--surface); }
+  .view-toggle{ display:inline-flex; gap:3px; background:var(--surface); padding:4px; border-radius:12px; border:1px solid var(--line); box-shadow:var(--shadow-sm); }
+  .view-toggle button{ border:none; background:none; padding:7px 14px; border-radius:9px; font-size:12.5px; font-weight:600; color:var(--ink-soft); cursor:pointer; }
+  .view-toggle button.active{ background:var(--accent); color:#fff; }
+
+  .kanban-board{ display:flex; gap:14px; overflow-x:auto; padding:18px; border-radius:var(--radius-lg);
+    background:linear-gradient(135deg, rgba(var(--accent-rgb),.92), rgba(var(--accent-rgb),.55)); }
+  .kanban-column{ background:#EEF0F4; border:none; border-radius:var(--radius-md); padding:12px; min-width:260px; flex:1 1 260px; box-shadow:0 2px 6px rgba(0,0,0,.08); }
+  .kanban-col-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; padding:0 4px; }
+  .kanban-col-title{ font-family:var(--font-display); font-weight:700; font-size:13.5px; color:var(--ink); }
+  .kanban-col-count{ font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); background:#fff; padding:2px 9px; border-radius:10px; }
+  .kanban-cards{ display:flex; flex-direction:column; gap:8px; min-height:56px; border-radius:var(--radius-sm); transition:background .15s ease; }
+  .kanban-cards.drag-over{ background:rgba(255,255,255,.5); outline:2px dashed rgba(0,0,0,.15); outline-offset:2px; }
+  .kanban-card{ position:relative; background:#fff; border:none; border-radius:8px; padding:14px 12px 11px; cursor:grab; box-shadow:0 1px 2px rgba(0,0,0,.12), 0 1px 1px rgba(0,0,0,.08); }
+  .kanban-card::before{ content:''; position:absolute; top:0; left:0; right:0; height:6px; border-radius:8px 8px 0 0; background:var(--card-color, var(--p-normal)); }
+  .kanban-card.dragging{ opacity:.45; }
+  .kanban-card-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:7px; }
+  .kanban-card-title{ font-size:13px; font-weight:600; line-height:1.35; }
+  .kanban-card.done .kanban-card-title{ text-decoration:line-through; color:var(--ink-soft); }
+  .kanban-card-actions{ display:flex; gap:3px; flex-shrink:0; }
+  .card-icon-btn{ border:none; background:#F1F2F4; width:22px; height:22px; border-radius:6px; font-size:11px; cursor:pointer; color:var(--ink-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .card-icon-btn:hover{ background:var(--bg); color:var(--ink); }
+  .card-icon-btn.danger:hover{ background:#FFE4E8; color:var(--p-urgente); }
+  .kanban-card-meta{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+  .kanban-card-meta:last-child{ margin-bottom:0; }
+  .has-notes{ font-size:12px; }
+  .kanban-move-row{ display:flex; gap:6px; }
+  .kanban-move-btn{ flex:1; border:1px solid var(--line); background:var(--bg); border-radius:8px; font-size:12px; padding:5px; cursor:pointer; color:var(--ink-soft); }
+  .kanban-move-btn:disabled{ opacity:.3; cursor:default; }
+  .kanban-empty{ font-size:12px; color:var(--ink-soft); text-align:center; padding:14px 4px; }
+  .kanban-add-btn{ width:100%; text-align:left; border:none; background:none; color:var(--ink-soft); font-size:12.5px; font-weight:600; padding:9px 8px; border-radius:8px; cursor:pointer; margin-top:6px; }
+
+  /* ---------- Planejador (day timeline) ---------- */
+  .planner-day-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:12px; }
+  .planner-day-label{ font-family:var(--font-display); font-weight:700; font-size:18px; min-width:170px; text-align:center; }
+  .planner-layout{ display:flex; gap:20px; align-items:flex-start; }
+  .planner-timeline{ flex:2; min-width:280px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow-sm); }
+  .planner-allday{ padding:10px 14px; border-bottom:1px solid var(--line); display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .planner-allday-label{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; margin-right:4px; }
+  .planner-hour-row{ display:flex; border-bottom:1px solid var(--line); min-height:52px; position:relative; }
+  .planner-hour-row:last-child{ border-bottom:none; }
+  .planner-hour-label{ width:60px; flex-shrink:0; font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); padding:7px 10px 0 0; text-align:right; }
+  .planner-hour-content{ flex:1; padding:6px 34px 6px 10px; display:flex; flex-direction:column; gap:5px; position:relative; border-left:1px solid var(--line); }
+  .planner-event-chip{ padding:6px 10px; border-radius:8px; color:#fff; font-size:12.5px; font-weight:600; cursor:pointer; }
+  .planner-add-hour-btn{ position:absolute; right:6px; top:6px; border:none; background:var(--bg); color:var(--ink-soft); width:22px; height:22px; border-radius:6px; font-size:13px; cursor:pointer; opacity:0; transition:opacity .15s ease; }
+  .planner-hour-row:hover .planner-add-hour-btn{ opacity:1; }
+  .planner-side{ flex:1; min-width:230px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:14px; box-shadow:var(--shadow-sm); }
+  .planner-side h3{ font-family:var(--font-display); font-weight:700; font-size:14px; margin:0 0 10px; }
+  .planner-task-row{ display:flex; align-items:center; gap:9px; padding:8px 0; border-bottom:1px solid var(--line); }
+  .planner-task-row:last-child{ border-bottom:none; }
+  .planner-empty-note{ font-size:12.5px; color:var(--ink-soft); padding:8px 0; }
+  @media (max-width:820px){ .planner-layout{ flex-direction:column; } }
+
+  /* ---------- Finanças ---------- */
+  .finance-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:22px; }
+  .finance-stat-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:14px 16px; box-shadow:var(--shadow-sm); }
+  .finance-stat-label{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft); margin-bottom:6px; }
+  .finance-stat-value{ font-family:var(--font-display); font-weight:700; font-size:19px; }
+  .finance-stat-value.positive{ color:var(--p-normal); }
+  .finance-stat-value.negative{ color:var(--p-urgente); }
+  .finance-dashboard-row{ display:flex; gap:20px; align-items:flex-start; margin-bottom:24px; flex-wrap:wrap; }
+  .finance-donut-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:18px; box-shadow:var(--shadow-sm); display:flex; gap:20px; align-items:center; flex:1; min-width:280px; flex-wrap:wrap; }
+  .finance-donut{ width:140px; height:140px; border-radius:50%; flex-shrink:0; position:relative; }
+  .finance-donut-hole{ position:absolute; top:18px; left:18px; right:18px; bottom:18px; border-radius:50%; background:var(--surface); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+  .finance-donut-hole .amt{ font-family:var(--font-display); font-weight:700; font-size:13.5px; }
+  .finance-donut-hole .lbl{ font-size:10px; color:var(--ink-soft); }
+  .finance-legend{ flex:1; min-width:180px; display:flex; flex-direction:column; gap:8px; }
+  .finance-legend-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .finance-legend-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .finance-legend-label{ flex:1; }
+  .finance-legend-value{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); }
+  .finance-cards-section{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:16px; box-shadow:var(--shadow-sm); flex:1; min-width:280px; }
+  .finance-cards-section h3{ font-family:var(--font-display); font-weight:700; font-size:14px; margin:0 0 12px; display:flex; justify-content:space-between; align-items:center; }
+  .finance-cards-section h3 button{ font-size:11.5px; }
+  .credit-card-row{ margin-bottom:12px; }
+  .credit-card-row:last-child{ margin-bottom:0; }
+  .credit-card-top{ display:flex; justify-content:space-between; align-items:center; font-size:12.5px; margin-bottom:5px; }
+  .credit-card-name{ font-weight:600; display:flex; align-items:center; gap:6px; }
+  .credit-card-amounts{ font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); }
+  .credit-card-bar-track{ height:7px; border-radius:6px; background:var(--bg); overflow:hidden; }
+  .credit-card-bar-fill{ height:100%; border-radius:6px; background:var(--p-normal); }
+  .credit-card-bar-fill.warn{ background:var(--p-importante); }
+  .credit-card-bar-fill.danger{ background:var(--p-urgente); }
+  .finance-empty-note{ font-size:12.5px; color:var(--ink-soft); padding:6px 0; }
+  .tx-list{ display:flex; flex-direction:column; gap:8px; }
+  .tx-row{ display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:12px 14px; box-shadow:var(--shadow-sm); }
+  .tx-cat-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .tx-main{ flex:1; min-width:0; cursor:pointer; }
+  .tx-desc{ font-size:13.5px; font-weight:600; }
+  .tx-meta{ display:flex; gap:8px; margin-top:3px; flex-wrap:wrap; align-items:center; }
+  .tx-meta span{ font-size:11px; color:var(--ink-soft); }
+  .tx-amount{ font-family:var(--font-mono); font-weight:700; font-size:14px; white-space:nowrap; }
+  .tx-amount.receita{ color:var(--p-normal); }
+  .tx-amount.despesa{ color:var(--p-urgente); }
+  .type-toggle{ display:flex; gap:8px; }
+  .type-toggle button{ flex:1; padding:10px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--bg); font-weight:600; font-size:13.5px; cursor:pointer; color:var(--ink-soft); }
+  .type-toggle button.active.receita{ background:var(--p-normal); color:#fff; border-color:var(--p-normal); }
+  .type-toggle button.active.despesa{ background:var(--p-urgente); color:#fff; border-color:var(--p-urgente); }
+  @media (max-width:820px){ .finance-stats{ grid-template-columns:repeat(2,1fr); } }
+  .kanban-add-btn:hover{ background:rgba(0,0,0,.06); color:var(--ink); }
+  .status-dot-todo{ background:#9CA3AF; }
+  .status-dot-doing{ background:var(--accent); }
+  .status-dot-done{ background:var(--p-normal); }
+  .status-badge-doing{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:2px 9px; border-radius:10px; color:#fff; background:var(--accent); }
+  .row-icon-actions{ display:flex; gap:4px; flex-shrink:0; }
+  .filter-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .filter-chip{ border:1px solid var(--line); background:var(--surface); padding:7px 15px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; color:var(--ink-soft); }
+  .filter-chip.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  .task-list{ display:flex; flex-direction:column; gap:9px; }
+  .task-row{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); border-left:4px solid var(--p-normal); overflow:hidden; box-shadow:var(--shadow-sm); }
+  .task-row-main{ display:flex; align-items:center; gap:12px; padding:13px 15px; }
+  .task-check{ width:21px; height:21px; border-radius:50%; border:2px solid var(--ink-soft); cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:none; padding:0; color:transparent; font-size:12px; }
+  .task-check.done{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .task-main{ flex:1; min-width:0; cursor:pointer; }
+  .task-title{ font-size:14px; font-weight:600; }
+  .task-row.done .task-title{ text-decoration:line-through; color:var(--ink-soft); }
+  .task-meta{ display:flex; gap:10px; margin-top:4px; align-items:center; flex-wrap:wrap; }
+  .task-date{ font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); }
+  .task-priority-badge{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:2px 9px; border-radius:10px; color:#fff; }
+  .task-sub-badge{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-soft); background:var(--bg); padding:2px 8px; border-radius:8px; }
+  .task-expand-btn{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:12px; padding:4px 6px; flex-shrink:0; }
+  .task-del{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:16px; padding:4px 8px; flex-shrink:0; }
+  .task-del:hover{ color:var(--p-urgente); }
+  .task-subtasks-panel{ border-top:1px solid var(--line); padding:9px 15px 13px 47px; display:flex; flex-direction:column; gap:6px; background:var(--bg); }
+  .sub-row{ display:flex; align-items:center; gap:8px; }
+  .sub-row input[type=checkbox]{ width:15px; height:15px; accent-color:var(--accent); }
+  .sub-row span{ font-size:12.5px; }
+  .sub-row span.done{ text-decoration:line-through; color:var(--ink-soft); }
+  .empty-state{ text-align:center; padding:56px 20px; color:var(--ink-soft); }
+  .empty-state .big{ font-family:var(--font-display); font-weight:700; font-size:18px; color:var(--ink); margin-bottom:6px; }
+
+  /* ---------- Chat ---------- */
+  .chat-shell{ display:flex; flex-direction:column; height:calc(100vh - 260px); max-height:600px; }
+  .chat-messages{ flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding:4px 2px 14px; }
+  .chat-msg{ max-width:78%; padding:11px 15px; border-radius:16px; font-size:14px; line-height:1.45; }
+  .chat-msg.user{ align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
+  .chat-msg.assistant{ align-self:flex-start; background:var(--surface); border:1px solid var(--line); border-bottom-left-radius:4px; box-shadow:var(--shadow-sm); }
+  .chat-msg.assistant.thinking{ color:var(--ink-soft); font-style:italic; }
+  .chat-msg .chip-inline{ display:inline-flex; align-items:center; gap:5px; margin-top:6px; font-size:11px; font-weight:700; padding:3px 10px; border-radius:10px; color:#fff; }
+  .chat-input-row{ display:flex; gap:10px; padding-top:12px; border-top:1px solid var(--line); }
+  .chat-input-row input{ flex:1; padding:12px 16px; border-radius:24px; border:1px solid var(--line); font-family:var(--font-body); font-size:14px; background:var(--surface); }
+  .chat-send-btn{ border:none; background:var(--accent); color:#fff; width:44px; height:44px; border-radius:50%; cursor:pointer; font-size:16px; flex-shrink:0; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(var(--accent-rgb),.3); }
+  .chat-send-btn:disabled{ opacity:.5; cursor:default; }
+  .chat-hint{ color:var(--ink-soft); font-size:12.5px; margin:0 0 16px; }
+  .api-key-banner{ background:#FFF6E6; border:1px solid #F5D9A0; color:#8A5A20; border-radius:var(--radius-md); padding:11px 15px; font-size:12.5px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .api-key-banner button{ border:none; background:#FFB020; color:#fff; padding:7px 14px; border-radius:var(--radius-sm); font-size:12px; font-weight:600; cursor:pointer; }
+
+  @media (max-width:720px){
+    .topbar{ padding:16px 18px 0; }
+    .segmented-wrap{ padding:14px 18px 0; }
+    .segmented{ width:100%; justify-content:space-between; }
+    .seg-btn{ flex:1; padding:9px 8px; }
+    .main{ padding:16px 18px 50px; }
+    .day-cell{ min-height:64px; padding:6px; }
+    .event-chip{ font-size:9.5px; }
+    .month-label{ min-width:0; font-size:17px; }
+    h1.page-title{ font-size:22px; }
+    .search-wrap{ max-width:none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ AUTH SCREEN ============ -->
+<div class="auth-shell" id="auth-shell">
+  <div class="auth-card">
+    <h1 id="auth-title">Entrar</h1>
+    <p>Sua agenda, sincronizada em todos os aparelhos.</p>
+    <div class="auth-error" id="auth-error"></div>
+    <input type="text" id="auth-email" placeholder="E-mail" autocomplete="username" />
+    <input type="password" id="auth-password" placeholder="Senha" autocomplete="current-password" />
+    <button class="primary" id="auth-submit-btn" onclick="submitAuth()">Entrar</button>
+    <div class="auth-toggle" id="auth-toggle">
+      Ainda não tem conta? <a onclick="toggleAuthMode()">Criar conta</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONFIG WARNING ============ -->
+<div class="config-warning" id="config-warning" style="display:none;">
+  <strong>Configuração pendente.</strong> Abra o arquivo <code>index.html</code>, encontre o bloco
+  <code>firebaseConfig</code> perto do fim do arquivo e cole ali as chaves do seu projeto Firebase
+  (Configurações do projeto → Seus apps → SDK do Firebase). Depois salve e recarregue esta página.
+</div>
+
+<!-- ============ APP SHELL ============ -->
+<div class="app" id="app">
+  <div class="topbar">
+    <span class="brand">Minha Agenda</span>
+    <div class="topbar-spacer"></div>
+    <span class="user-email" id="user-email"></span>
+    <button class="icon-round-btn" onclick="openSettingsModal()" title="Configurações">⚙</button>
+    <button class="logout-btn" onclick="doLogout()">Sair</button>
+  </div>
+
+  <div class="segmented-wrap">
+    <div class="segmented" id="segmented">
+      <div class="seg-indicator" id="seg-indicator"></div>
+      <button class="seg-btn active" data-tab="calendar" onclick="switchTab('calendar')">Calendário</button>
+      <button class="seg-btn" data-tab="planner" onclick="switchTab('planner')">Planejador</button>
+      <button class="seg-btn" data-tab="tasks" onclick="switchTab('tasks')">Tarefas</button>
+      <button class="seg-btn" data-tab="finance" onclick="switchTab('finance')">Finanças</button>
+      <button class="seg-btn" data-tab="chat" onclick="switchTab('chat')">Assistente</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="search-wrap">
+      <div class="search-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="global-search" placeholder="Pesquisar compromissos ou tarefas..." oninput="handleSearchInput()" onfocus="handleSearchInput()" />
+      </div>
+      <div class="search-results" id="search-results"></div>
+    </div>
+
+    <div class="reminders-banner" id="reminders-banner"></div>
+
+    <!-- CALENDAR VIEW -->
+    <div class="view active" id="view-calendar">
+      <div class="page-head">
+        <h1 class="page-title">Calendário</h1>
+        <p class="page-sub">Toque em um dia para ver ou adicionar compromissos.</p>
+      </div>
+      <div class="cal-header">
+        <div class="cal-nav">
+          <button class="icon-btn" onclick="changeMonth(-1)">‹</button>
+          <div class="month-label" id="month-label"></div>
+          <button class="icon-btn" onclick="changeMonth(1)">›</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-today" onclick="goToday()">Hoje</button>
+          <button class="btn-primary" onclick="openApptModal(todayStr())">+ Compromisso</button>
+        </div>
+      </div>
+      <div class="weekdays"><div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div></div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+
+    <!-- PLANEJADOR VIEW -->
+    <div class="view" id="view-planner">
+      <div class="page-head">
+        <h1 class="page-title">Planejador</h1>
+        <p class="page-sub">Compromissos e tarefas do dia, lado a lado, hora a hora.</p>
+      </div>
+      <div class="planner-day-header">
+        <div class="cal-nav">
+          <button class="icon-btn" onclick="changePlannerDay(-1)">‹</button>
+          <div class="planner-day-label" id="planner-day-label"></div>
+          <button class="icon-btn" onclick="changePlannerDay(1)">›</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-today" onclick="goPlannerToday()">Hoje</button>
+          <button class="btn-primary" onclick="openApptModal(plannerDateStr())">+ Compromisso</button>
+        </div>
+      </div>
+      <div class="planner-layout">
+        <div class="planner-timeline">
+          <div class="planner-allday" id="planner-allday" style="display:none;"></div>
+          <div id="planner-hours"></div>
+        </div>
+        <div class="planner-side">
+          <h3>Tarefas do dia</h3>
+          <div id="planner-tasks-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TASKS VIEW -->
+    <div class="view" id="view-tasks">
+      <div class="page-head">
+        <h1 class="page-title">Tarefas</h1>
+        <p class="page-sub">Acompanhe pendências com data, prioridade, subtarefas e conclusão.</p>
+      </div>
+      <div class="board-switcher" id="board-switcher"></div>
+      <div class="task-toolbar">
+        <div class="filter-row" id="filter-row">
+          <button class="filter-chip active" data-filter="todas" onclick="setFilter('todas')">Todas</button>
+          <button class="filter-chip" data-filter="pendentes" onclick="setFilter('pendentes')">Pendentes</button>
+          <button class="filter-chip" data-filter="andamento" onclick="setFilter('andamento')">Em andamento</button>
+          <button class="filter-chip" data-filter="concluidas" onclick="setFilter('concluidas')">Concluídas</button>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <div class="view-toggle">
+            <button data-view="lista" class="active" onclick="setTaskView('lista')">Lista</button>
+            <button data-view="kanban" onclick="setTaskView('kanban')">Kanban</button>
+          </div>
+          <button class="btn-primary" onclick="openTaskModal()">+ Tarefa</button>
+        </div>
+      </div>
+      <div class="task-list" id="task-list"></div>
+      <div class="kanban-board" id="kanban-board" style="display:none;"></div>
+    </div>
+
+    <!-- FINANCE VIEW -->
+    <div class="view" id="view-finance">
+      <div class="page-head">
+        <h1 class="page-title">Finanças</h1>
+        <p class="page-sub">Receitas, despesas e cartão de crédito, mês a mês.</p>
+      </div>
+      <div class="cal-header">
+        <div class="cal-nav">
+          <button class="icon-btn" onclick="changeFinanceMonth(-1)">‹</button>
+          <div class="month-label" id="finance-month-label"></div>
+          <button class="icon-btn" onclick="changeFinanceMonth(1)">›</button>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-today" onclick="goFinanceToday()">Este mês</button>
+          <button class="btn-ghost" onclick="openCategoryModal()">Categorias</button>
+          <button class="btn-primary" onclick="openTxModal()">+ Lançamento</button>
+        </div>
+      </div>
+
+      <div class="finance-stats">
+        <div class="finance-stat-card"><div class="finance-stat-label">Receitas</div><div class="finance-stat-value positive" id="stat-receitas">R$ 0,00</div></div>
+        <div class="finance-stat-card"><div class="finance-stat-label">Despesas</div><div class="finance-stat-value negative" id="stat-despesas">R$ 0,00</div></div>
+        <div class="finance-stat-card"><div class="finance-stat-label">Saldo</div><div class="finance-stat-value" id="stat-saldo">R$ 0,00</div></div>
+        <div class="finance-stat-card"><div class="finance-stat-label">Fatura do cartão</div><div class="finance-stat-value" id="stat-fatura">R$ 0,00</div></div>
+      </div>
+
+      <div class="finance-dashboard-row">
+        <div class="finance-donut-card">
+          <div class="finance-donut" id="finance-donut">
+            <div class="finance-donut-hole"><div class="amt" id="donut-amt">R$ 0</div><div class="lbl">gasto no mês</div></div>
+          </div>
+          <div class="finance-legend" id="finance-legend"></div>
+        </div>
+        <div class="finance-cards-section">
+          <h3>Cartões de crédito <button class="btn-ghost" onclick="openCardModal()" style="padding:5px 10px;">+ Cartão</button></h3>
+          <div id="credit-cards-list"></div>
+        </div>
+      </div>
+
+      <div class="finance-cards-section" id="installments-section" style="margin-bottom:24px;">
+        <h3>Compras parceladas em aberto</h3>
+        <div id="installments-list"></div>
+      </div>
+
+      <h1 class="page-title" style="font-size:18px; margin-bottom:12px;">Lançamentos do mês</h1>
+      <div class="tx-list" id="tx-list"></div>
+    </div>
+
+    <!-- CHAT VIEW -->
+    <div class="view" id="view-chat">
+      <div class="page-head">
+        <h1 class="page-title">Assistente</h1>
+        <p class="chat-hint">Escreva naturalmente, ex: "marcar dentista sexta às 14h", "tarefa: enviar contrato até amanhã, urgente" ou "gastei 45 no mercado hoje no cartão Nubank".</p>
+      </div>
+      <div class="api-key-banner" id="api-key-banner" style="display:none;">
+        Para o assistente funcionar, configure sua chave de API da Anthropic.
+        <button onclick="openSettingsModal()">Configurar</button>
+      </div>
+      <div class="chat-shell">
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Digite sua mensagem..." onkeydown="if(event.key==='Enter'){sendChatMessage();}" />
+          <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()">➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APPOINTMENT MODAL -->
+<div class="overlay" id="appt-overlay">
+  <div class="modal">
+    <h2 id="appt-modal-title">Novo compromisso</h2>
+    <div class="field"><label>Título</label><input type="text" id="appt-title" placeholder="Ex: Reunião com cliente" /></div>
+    <div class="field"><label>Data</label><input type="date" id="appt-date" /></div>
+    <div class="field"><label>Horário (opcional)</label><input type="time" id="appt-time" /></div>
+    <div class="field"><label>Prioridade / cor</label><div class="color-row" id="appt-color-row"></div></div>
+    <div class="field"><label>Planejamento</label><textarea id="appt-planning" rows="3" placeholder="Pauta, contexto, anotações..."></textarea></div>
+    <div class="modal-actions">
+      <button class="link-btn" id="appt-delete-btn" style="visibility:hidden;" onclick="deleteAppt()">Excluir</button>
+      <div class="modal-actions-right">
+        <button class="btn-ghost" onclick="closeApptModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveAppt()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DAY PANEL MODAL -->
+<div class="overlay" id="day-overlay">
+  <div class="modal">
+    <h2 id="day-panel-title">Dia</h2>
+    <div class="day-panel-list" id="day-panel-list"></div>
+    <div class="modal-actions">
+      <div></div>
+      <div class="modal-actions-right">
+        <button class="btn-ghost" onclick="closeDayPanel()">Fechar</button>
+        <button class="btn-primary" id="day-panel-add" onclick="addFromDayPanel()">+ Adicionar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TASK MODAL -->
+<div class="overlay" id="task-overlay">
+  <div class="modal">
+    <h2 id="task-modal-title">Nova tarefa</h2>
+    <div class="field"><label>Título</label><input type="text" id="task-title" placeholder="Ex: Enviar proposta" /></div>
+    <div class="field"><label>Data de conclusão</label><input type="date" id="task-date" /></div>
+    <div class="field"><label>Prioridade</label><div class="color-row" id="task-color-row"></div></div>
+    <div class="field"><label>Status</label><div class="color-row" id="task-status-row"></div></div>
+    <div class="field">
+      <label>Subtarefas</label>
+      <div class="subtask-list" id="subtask-list"></div>
+      <div class="subtask-add-row">
+        <input type="text" id="subtask-new-title" placeholder="Adicionar subtarefa..." onkeydown="if(event.key==='Enter'){event.preventDefault();addSubtaskField();}" />
+        <button onclick="addSubtaskField()">Adicionar</button>
+      </div>
+    </div>
+    <div class="field"><label>Planejamento</label><textarea id="task-planning" rows="3" placeholder="Anotações, passos, contexto..."></textarea></div>
+    <div class="modal-actions">
+      <button class="link-btn" id="task-delete-btn" style="visibility:hidden;" onclick="deleteTask()">Excluir</button>
+      <div class="modal-actions-right">
+        <button class="btn-ghost" onclick="closeTaskModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveTask()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORIES MODAL -->
+<div class="overlay" id="category-overlay">
+  <div class="modal">
+    <h2>Gerenciar categorias</h2>
+    <div class="subtask-list" id="category-manage-list"></div>
+    <div class="subtask-add-row">
+      <input type="color" id="category-new-color" value="#9CA3AF" style="width:38px; padding:2px; flex-shrink:0;" />
+      <input type="text" id="category-new-name" placeholder="Nova categoria..." onkeydown="if(event.key==='Enter'){event.preventDefault();addCategoryField();}" />
+      <button onclick="addCategoryField()">Adicionar</button>
+    </div>
+    <div class="modal-actions">
+      <div></div>
+      <div class="modal-actions-right"><button class="btn-primary" onclick="closeCategoryModal()">Concluído</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- TRANSACTION MODAL -->
+<div class="overlay" id="tx-overlay">
+  <div class="modal">
+    <h2 id="tx-modal-title">Novo lançamento</h2>
+    <div class="field">
+      <div class="type-toggle" id="tx-type-toggle">
+        <button type="button" data-type="receita">Receita</button>
+        <button type="button" data-type="despesa">Despesa</button>
+      </div>
+    </div>
+    <div class="field"><label>Descrição</label><input type="text" id="tx-desc" placeholder="Ex: Supermercado" /></div>
+    <div class="field"><label>Valor (R$)</label><input type="number" id="tx-amount" step="0.01" min="0" placeholder="0,00" /></div>
+    <div class="field"><label>Data</label><input type="date" id="tx-date" /></div>
+    <div class="field"><label>Categoria</label><select id="tx-category"></select></div>
+    <div class="field"><label>Forma de pagamento</label><select id="tx-method" onchange="toggleTxCardField()"></select></div>
+    <div class="field" id="tx-card-field" style="display:none;"><label>Cartão</label><select id="tx-card"></select></div>
+    <div class="field" id="installment-field"></div>
+    <div class="modal-actions">
+      <button class="link-btn" id="tx-delete-btn" style="visibility:hidden;" onclick="deleteTx()">Excluir</button>
+      <div class="modal-actions-right">
+        <button class="btn-ghost" onclick="closeTxModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveTx()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CREDIT CARD MODAL -->
+<div class="overlay" id="card-overlay">
+  <div class="modal">
+    <h2 id="card-modal-title">Novo cartão</h2>
+    <div class="field"><label>Nome do cartão</label><input type="text" id="card-name" placeholder="Ex: Nubank" /></div>
+    <div class="field"><label>Limite (R$)</label><input type="number" id="card-limit" step="0.01" min="0" placeholder="0,00" /></div>
+    <div class="modal-actions">
+      <button class="link-btn" id="card-delete-btn" style="visibility:hidden;" onclick="deleteCard()">Excluir cartão</button>
+      <div class="modal-actions-right">
+        <button class="btn-ghost" onclick="closeCardModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveCard()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BOARD MODAL -->
+<div class="overlay" id="board-overlay">
+  <div class="modal">
+    <h2 id="board-modal-title">Novo quadro</h2>
+    <div class="field"><label>Nome</label><input type="text" id="board-name-input" placeholder="Ex: Projeto X" /></div>
+    <div class="modal-actions">
+      <button class="link-btn" id="board-delete-btn" style="visibility:hidden;" onclick="deleteBoard()">Excluir quadro</button>
+      <div class="modal-actions-right">
+        <button class="btn-ghost" onclick="closeBoardModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveBoard()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="settings-overlay">
+  <div class="modal">
+    <h2>Configurações</h2>
+
+    <div class="field">
+      <label>Cor de destaque</label>
+      <div class="accent-swatches" id="accent-swatches"></div>
+      <div class="accent-custom-row">
+        <input type="color" id="accent-custom-picker" value="#6D5EF7" />
+        <span style="font-size:12.5px; color:var(--ink-soft);">ou escolha uma cor personalizada</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Cor de fundo</label>
+      <div class="accent-swatches" id="bg-swatches"></div>
+      <div class="accent-custom-row">
+        <input type="color" id="bg-custom-picker" value="#F5F6FA" />
+        <span style="font-size:12.5px; color:var(--ink-soft);">ou escolha uma cor personalizada (tons claros mantêm o texto legível)</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Fonte</label>
+      <select id="font-select"></select>
+      <div class="font-preview" id="font-preview">
+        <div class="fp-title">Reunião com o financeiro</div>
+        <div class="fp-body">Prévia de como os textos vão aparecer no app.</div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Google Agenda</label>
+      <div id="google-status" style="font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;"></div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn-ghost" id="google-connect-btn" onclick="handleGoogleConnect()">Conectar Google Agenda</button>
+        <button class="btn-ghost" id="google-import-btn" onclick="handleImportGoogleEvents()" style="display:none;">Importar eventos futuros</button>
+      </div>
+      <div class="helptext">
+        Compromissos criados neste app passam a existir também na sua Google Agenda (e o contrário ao
+        editar/excluir). O botão "Importar" traz para cá os eventos que já existem por lá nos próximos 60 dias.
+        Requer configurar um Client ID do Google — veja o guia de instalação.
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Notificações</label>
+      <div id="notif-status" style="font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;"></div>
+      <button class="btn-ghost" id="notif-enable-btn" onclick="handleEnableNotifications()">Ativar notificações neste aparelho</button>
+      <div class="helptext">
+        Avisa sobre compromissos (30 min antes) e tarefas que vencem hoje, mesmo com o app fechado.
+        Funciona em Android, Chrome/Edge no computador e no iPhone (a partir do iOS 16.4, com o app
+        adicionado à Tela de Início). Precisa ser ativado em cada aparelho separadamente.
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Chave de API da Anthropic</label>
+      <input type="password" id="settings-api-key" placeholder="sk-ant-..." />
+      <div class="helptext">
+        Fica salva apenas neste aparelho (localStorage do navegador), nunca é enviada para o Firebase.
+        Crie a sua em console.anthropic.com. Como fica visível no navegador deste aparelho, use apenas em
+        aparelhos de confiança e considere definir um limite de gastos na conta da API.
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <div></div>
+      <div class="modal-actions-right">
+        <button class="btn-ghost" onclick="closeSettingsModal()">Fechar</button>
+        <button class="btn-primary" onclick="saveSettings()">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+    createUserWithEmailAndPassword, signOut
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, onSnapshot, arrayUnion
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  import {
+    getMessaging, getToken, onMessage, isSupported
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging.js";
+
+  // ======================================================================
+  // 1) COLE AQUI A CONFIGURAÇÃO DO SEU PROJETO FIREBASE
+  //    (Console do Firebase → Configurações do projeto → Seus apps → SDK)
+  // ======================================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyD3WyK0K3tz0X3pDdCT0l3RGb75ivqCJM8",
+    authDomain: "agenda-57029.firebaseapp.com",
+    projectId: "agenda-57029",
+    storageBucket: "agenda-57029.firebasestorage.app",
+    messagingSenderId: "727838249488",
+    appId: "1:727838249488:web:dd985a200978807e027095"
+  };
+
+  // Firebase Console → Configurações do projeto → Cloud Messaging → Web Push certificates → gerar par de chaves.
+  const VAPID_KEY = "SUA_VAPID_KEY_AQUI";
+
+  const CONFIG_IS_PLACEHOLDER = firebaseConfig.apiKey === "SUA_API_KEY_AQUI";
+
+  if (CONFIG_IS_PLACEHOLDER) {
+    document.getElementById('auth-shell').style.display = 'none';
+    document.getElementById('config-warning').style.display = 'block';
+  } else {
+    const fbApp = initializeApp(firebaseConfig);
+    const auth = getAuth(fbApp);
+    const db = getFirestore(fbApp);
+
+    let isSignup = false;
+    let unsubscribeSnapshot = null;
+
+    window.toggleAuthMode = function(){
+      isSignup = !isSignup;
+      document.getElementById('auth-title').textContent = isSignup ? 'Criar conta' : 'Entrar';
+      document.getElementById('auth-submit-btn').textContent = isSignup ? 'Criar conta' : 'Entrar';
+      document.getElementById('auth-toggle').innerHTML = isSignup
+        ? 'Já tem conta? <a onclick="toggleAuthMode()">Entrar</a>'
+        : 'Ainda não tem conta? <a onclick="toggleAuthMode()">Criar conta</a>';
+      document.getElementById('auth-error').style.display = 'none';
+    };
+
+    window.submitAuth = async function(){
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value;
+      const errBox = document.getElementById('auth-error');
+      errBox.style.display = 'none';
+      if(!email || !password){ errBox.textContent = 'Preencha e-mail e senha.'; errBox.style.display = 'block'; return; }
+      try{
+        if(isSignup){ await createUserWithEmailAndPassword(auth, email, password); }
+        else { await signInWithEmailAndPassword(auth, email, password); }
+      } catch(e){
+        errBox.textContent = traduzErroAuth(e.code);
+        errBox.style.display = 'block';
+      }
+    };
+
+    function traduzErroAuth(code){
+      const map = {
+        'auth/invalid-email': 'E-mail inválido.',
+        'auth/user-not-found': 'Usuário não encontrado.',
+        'auth/wrong-password': 'Senha incorreta.',
+        'auth/invalid-credential': 'E-mail ou senha incorretos.',
+        'auth/email-already-in-use': 'Este e-mail já tem uma conta.',
+        'auth/weak-password': 'A senha precisa ter ao menos 6 caracteres.'
+      };
+      return map[code] || 'Não foi possível concluir. Tente novamente.';
+    }
+
+    window.doLogout = async function(){ await signOut(auth); };
+
+    let messaging = null;
+    isSupported().then((ok)=>{ if(ok) messaging = getMessaging(fbApp); });
+
+    window.getNotificationStatus = function(){
+      if(!('Notification' in window)) return 'unsupported';
+      return Notification.permission; // 'default' | 'granted' | 'denied'
+    };
+
+    window.enableNotifications = async function(){
+      if(!('Notification' in window) || !messaging){
+        alert('Este navegador não suporta notificações push (comum em iPhones fora do modo "app instalado na tela de início").');
+        return false;
+      }
+      try{
+        const permission = await Notification.requestPermission();
+        if(permission !== 'granted'){ return false; }
+        const reg = await navigator.serviceWorker.ready;
+        const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+        if(token && window.__docRef){
+          await setDoc(window.__docRef, { fcmTokens: arrayUnion(token) }, { merge: true });
+        }
+        return true;
+      } catch(e){
+        console.error('Erro ao ativar notificações', e);
+        alert('Não foi possível ativar as notificações. Verifique se a VAPID_KEY foi configurada corretamente.');
+        return false;
+      }
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      if(user){
+        document.getElementById('auth-shell').style.display = 'none';
+        document.getElementById('app').classList.add('ready');
+        document.getElementById('user-email').textContent = user.email || '';
+        subscribeToUserData(user.uid);
+      } else {
+        document.getElementById('app').classList.remove('ready');
+        document.getElementById('auth-shell').style.display = 'flex';
+        if(unsubscribeSnapshot){ unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+      }
+    });
+
+    function subscribeToUserData(uid){
+      const ref = doc(db, 'agendas', uid);
+      unsubscribeSnapshot = onSnapshot(ref, (snap) => {
+        const data = snap.exists() ? snap.data() : {};
+        window.appointments = data.appointments || [];
+        window.tasks = data.tasks || [];
+        (window.tasks || []).forEach(t=>{ if(!Array.isArray(t.subtasks)) t.subtasks = []; });
+        window.chatMessages = data.chatMessages || [];
+        window.transactions = data.transactions || [];
+        window.creditCards = data.creditCards || [];
+        window.categories = (Array.isArray(data.categories) && data.categories.length > 0) ? data.categories : DEFAULT_CATEGORIES.map(c=>({...c}));
+
+        let boards = Array.isArray(data.boards) ? data.boards : [];
+        if(boards.length === 0) boards = [{ id:'default', name:'Minhas tarefas' }];
+        window.boards = boards;
+        window.tasks.forEach(t=>{ if(!t.boardId) t.boardId = boards[0].id; });
+        if(!window.activeBoardId || !boards.find(b=>b.id===window.activeBoardId)){
+          window.activeBoardId = boards[0].id;
+          localStorage.setItem('agenda_active_board', window.activeBoardId);
+        }
+
+        if(data.theme) window.applyTheme(data.theme, false);
+        window.renderCalendar();
+        window.renderBoardSwitcher();
+        window.renderTasks();
+        window.renderKanban();
+        window.renderReminders();
+        window.renderChat();
+        window.renderFinance();
+      });
+      window.__docRef = ref;
+    }
+
+    window.__saveCloudData = async function(){
+      if(!window.__docRef) return;
+      try{
+        await setDoc(window.__docRef, {
+          appointments: window.appointments || [],
+          tasks: window.tasks || [],
+          chatMessages: window.chatMessages || [],
+          theme: window.currentTheme || {},
+          boards: window.boards || [],
+          transactions: window.transactions || [],
+          creditCards: window.creditCards || [],
+          categories: window.categories || []
+        }, { merge: true });
+      } catch(e){ console.error('Erro ao salvar na nuvem', e); }
+    };
+  }
+</script>
+
+<script>
+  const PRIORITIES = [
+    { key:'urgente',    label:'Urgente',    hex:'#FF5A72' },
+    { key:'importante', label:'Importante', hex:'#FFB020' },
+    { key:'normal',     label:'Normal',     hex:'#22C55E' },
+    { key:'pessoal',    label:'Pessoal',    hex:'#3B82F6' },
+  ];
+  const STATUSES = [
+    { key:'todo',  label:'A fazer' },
+    { key:'doing', label:'Em andamento' },
+    { key:'done',  label:'Concluída' },
+  ];
+  const STATUS_ORDER = ['todo','doing','done'];
+
+  const ACCENT_PRESETS = ['#6D5EF7', '#EC4899', '#F97316', '#14B8A6', '#3B82F6', '#EF4444', '#22C55E', '#8B5CF6'];
+  const BG_PRESETS = ['#F5F6FA', '#FFFFFF', '#F3F4F6', '#FDF6F0', '#F0F7F4', '#F5F0FA', '#FFF9F0', '#EEF3FA'];
+
+  // Google Cloud Console → APIs e serviços → Credenciais → criar "ID do cliente OAuth" (Aplicativo da Web).
+  const GOOGLE_CLIENT_ID = "SEU_CLIENT_ID_AQUI.apps.googleusercontent.com";
+  const GOOGLE_SCOPE = "https://www.googleapis.com/auth/calendar.events";
+  let googleAccessToken = null;
+  let googleTokenClient = null;
+
+  const DEFAULT_CATEGORIES = [
+    { id:'salario',       label:'Salário',       hex:'#22C55E' },
+    { id:'freelance',     label:'Freelance',     hex:'#14B8A6' },
+    { id:'investimentos', label:'Investimentos', hex:'#3B82F6' },
+    { id:'alimentacao',   label:'Alimentação',   hex:'#F97316' },
+    { id:'transporte',    label:'Transporte',    hex:'#0EA5E9' },
+    { id:'moradia',       label:'Moradia',       hex:'#8B5CF6' },
+    { id:'lazer',         label:'Lazer',         hex:'#EC4899' },
+    { id:'saude',         label:'Saúde',         hex:'#EF4444' },
+    { id:'educacao',      label:'Educação',      hex:'#6366F1' },
+    { id:'outros',        label:'Outros',        hex:'#9CA3AF' },
+  ];
+  window.categories = [];
+  const PAYMENT_METHODS = [
+    { key:'dinheiro', label:'Dinheiro' },
+    { key:'debito',   label:'Débito' },
+    { key:'pix',      label:'Pix' },
+    { key:'cartao',   label:'Cartão de crédito' },
+  ];
+  function categoryMeta(id){
+    const list = window.categories || [];
+    return list.find(c=>c.id===id) || list[list.length-1] || { id:'outros', label:'Outros', hex:'#9CA3AF' };
+  }
+  function methodLabel(key){ const m = PAYMENT_METHODS.find(p=>p.key===key); return m ? m.label : key; }
+  function formatBRL(n){ return (Number(n)||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }
+
+  window.transactions = []; window.creditCards = [];
+  let financeDate = new Date();
+  let editingTxId = null, editingCardId = null;
+  const FONT_PAIRS = {
+    moderna:  { label:'Moderna',   display:"'Sora', sans-serif",         body:"'Inter', sans-serif" },
+    editorial:{ label:'Editorial', display:"'Fraunces', serif",          body:"'Inter', sans-serif" },
+    tecnica:  { label:'Técnica',   display:"'Space Grotesk', sans-serif",body:"'IBM Plex Sans', sans-serif" },
+    amigavel: { label:'Amigável',  display:"'Poppins', sans-serif",      body:"'Mulish', sans-serif" },
+    sistema:  { label:'Sistema',   display:"system-ui, sans-serif",      body:"system-ui, sans-serif" },
+  };
+
+  window.appointments = []; window.tasks = []; window.chatMessages = [];
+  window.boards = []; window.activeBoardId = localStorage.getItem('agenda_active_board') || null;
+  window.currentTheme = { accent:'#6D5EF7', bg:'#F5F6FA', font:'moderna' };
+  let currentDate = new Date();
+  let editingApptId = null, editingTaskId = null, editingSubtasks = [];
+  let dayPanelDate = null, taskFilter = 'todas';
+  let expandedTaskIds = new Set();
+  let taskViewMode = localStorage.getItem('agenda_task_view') || 'lista';
+
+  function taskStatus(t){ return t.status || (t.done ? 'done' : 'todo'); }
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function todayStr(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+  function priorityMeta(key){ return PRIORITIES.find(p=>p.key===key) || PRIORITIES[2]; }
+  function escapeHtml(str){ const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+  function formatDatePt(dateStr){ const [y,m,d] = dateStr.split('-'); return d + '/' + m + '/' + y; }
+  async function persist(){ if(window.__saveCloudData) await window.__saveCloudData(); }
+  function hexToRgb(hex){
+    const h = hex.replace('#','');
+    const bigint = parseInt(h.length===3 ? h.split('').map(c=>c+c).join('') : h, 16);
+    return [(bigint>>16)&255, (bigint>>8)&255, bigint&255];
+  }
+
+  /* ---------------- Theme ---------------- */
+  function applyTheme(theme, shouldPersist){
+    window.currentTheme = { accent: theme.accent || '#6D5EF7', bg: theme.bg || '#F5F6FA', font: theme.font || 'moderna' };
+    const [r,g,b] = hexToRgb(window.currentTheme.accent);
+    document.documentElement.style.setProperty('--accent', window.currentTheme.accent);
+    document.documentElement.style.setProperty('--accent-rgb', r+','+g+','+b);
+    document.documentElement.style.setProperty('--bg', window.currentTheme.bg);
+    const pair = FONT_PAIRS[window.currentTheme.font] || FONT_PAIRS.moderna;
+    document.documentElement.style.setProperty('--font-display', pair.display);
+    document.documentElement.style.setProperty('--font-body', pair.body);
+    localStorage.setItem('agenda_theme', JSON.stringify(window.currentTheme));
+    if(shouldPersist) persist();
+  }
+  window.applyTheme = applyTheme;
+
+  function buildAccentSwatches(){
+    const wrap = document.getElementById('accent-swatches'); wrap.innerHTML = '';
+    ACCENT_PRESETS.forEach(hex=>{
+      const el = document.createElement('div');
+      el.className = 'accent-swatch' + (hex.toLowerCase()===window.currentTheme.accent.toLowerCase() ? ' selected' : '');
+      el.style.background = hex;
+      el.dataset.hex = hex;
+      el.innerHTML = hex.toLowerCase()===window.currentTheme.accent.toLowerCase() ? '✓' : '';
+      el.onclick = ()=>{ selectAccent(hex); };
+      wrap.appendChild(el);
+    });
+  }
+  function selectAccent(hex){
+    document.querySelectorAll('.accent-swatch').forEach(s=>{ s.classList.toggle('selected', s.dataset.hex.toLowerCase()===hex.toLowerCase()); s.innerHTML = s.dataset.hex.toLowerCase()===hex.toLowerCase() ? '✓' : ''; });
+    document.getElementById('accent-custom-picker').value = hex;
+    window.__pendingAccent = hex;
+    updateFontPreviewColors();
+  }
+  function buildBgSwatches(){
+    const wrap = document.getElementById('bg-swatches'); wrap.innerHTML = '';
+    BG_PRESETS.forEach(hex=>{
+      const el = document.createElement('div');
+      el.className = 'bg-swatch' + (hex.toLowerCase()===window.currentTheme.bg.toLowerCase() ? ' selected' : '');
+      el.style.background = hex;
+      el.style.border = '1px solid ' + (hex.toLowerCase()===window.currentTheme.bg.toLowerCase() ? 'var(--ink)' : 'var(--line)');
+      el.dataset.hex = hex;
+      el.onclick = ()=>{ selectBg(hex); };
+      wrap.appendChild(el);
+    });
+  }
+  function selectBg(hex){
+    document.querySelectorAll('.bg-swatch').forEach(s=>{
+      const isSel = s.dataset.hex.toLowerCase()===hex.toLowerCase();
+      s.classList.toggle('selected', isSel);
+      s.style.border = isSel ? '2px solid var(--ink)' : '1px solid var(--line)';
+    });
+    document.getElementById('bg-custom-picker').value = hex;
+    window.__pendingBg = hex;
+    document.getElementById('font-preview').style.background = hex;
+  }
+  function updateFontPreviewColors(){
+    const preview = document.getElementById('font-preview');
+    const pair = FONT_PAIRS[document.getElementById('font-select').value] || FONT_PAIRS.moderna;
+    preview.querySelector('.fp-title').style.fontFamily = pair.display;
+    preview.querySelector('.fp-title').style.color = window.__pendingAccent || window.currentTheme.accent;
+    preview.querySelector('.fp-body').style.fontFamily = pair.body;
+  }
+  function buildFontSelect(){
+    const sel = document.getElementById('font-select'); sel.innerHTML = '';
+    Object.keys(FONT_PAIRS).forEach(key=>{
+      const opt = document.createElement('option'); opt.value = key; opt.textContent = FONT_PAIRS[key].label;
+      if(key === window.currentTheme.font) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = updateFontPreviewColors;
+  }
+
+  /* ---------------- Tabs (segmented control) ---------------- */
+  const TAB_ORDER = ['calendar','planner','tasks','finance','chat'];
+  function switchTab(tab){
+    document.querySelectorAll('.seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+    document.getElementById('view-calendar').classList.toggle('active', tab==='calendar');
+    document.getElementById('view-planner').classList.toggle('active', tab==='planner');
+    document.getElementById('view-tasks').classList.toggle('active', tab==='tasks');
+    document.getElementById('view-finance').classList.toggle('active', tab==='finance');
+    document.getElementById('view-chat').classList.toggle('active', tab==='chat');
+    moveSegIndicator(tab);
+    if(tab==='planner') renderPlanner();
+    if(tab==='finance') renderFinance();
+    if(tab==='chat'){
+      const box = document.getElementById('chat-messages');
+      box.scrollTop = box.scrollHeight;
+      document.getElementById('api-key-banner').style.display = localStorage.getItem('anthropic_api_key') ? 'none' : 'flex';
+    }
+  }
+  function moveSegIndicator(tab){
+    const idx = TAB_ORDER.indexOf(tab);
+    const btns = document.querySelectorAll('.seg-btn');
+    const target = btns[idx];
+    const indicator = document.getElementById('seg-indicator');
+    if(!target) return;
+    indicator.style.width = target.offsetWidth + 'px';
+    indicator.style.transform = 'translateX(' + target.offsetLeft + 'px)';
+  }
+  window.addEventListener('resize', ()=>{
+    const active = document.querySelector('.seg-btn.active');
+    if(active) moveSegIndicator(active.dataset.tab);
+  });
+
+  /* ---------------- Settings modal ---------------- */
+  function openSettingsModal(){
+    document.getElementById('settings-api-key').value = localStorage.getItem('anthropic_api_key') || '';
+    window.__pendingAccent = window.currentTheme.accent;
+    window.__pendingBg = window.currentTheme.bg;
+    buildAccentSwatches();
+    buildBgSwatches();
+    buildFontSelect();
+    document.getElementById('accent-custom-picker').value = window.currentTheme.accent;
+    document.getElementById('accent-custom-picker').oninput = (e)=> selectAccent(e.target.value);
+    document.getElementById('bg-custom-picker').value = window.currentTheme.bg;
+    document.getElementById('bg-custom-picker').oninput = (e)=> selectBg(e.target.value);
+    document.getElementById('font-preview').style.background = window.currentTheme.bg;
+    updateFontPreviewColors();
+    refreshNotifStatus();
+    refreshGoogleStatusUI();
+    document.getElementById('settings-overlay').classList.add('open');
+  }
+  function refreshNotifStatus(){
+    const statusBox = document.getElementById('notif-status');
+    const btn = document.getElementById('notif-enable-btn');
+    const status = window.getNotificationStatus ? window.getNotificationStatus() : 'unsupported';
+    if(status === 'granted'){ statusBox.textContent = 'Ativadas neste aparelho ✓'; btn.style.display = 'none'; }
+    else if(status === 'denied'){ statusBox.textContent = 'Bloqueadas nas configurações do navegador. Habilite manualmente para este site.'; btn.style.display = 'none'; }
+    else if(status === 'unsupported'){ statusBox.textContent = 'Não suportadas neste navegador.'; btn.style.display = 'none'; }
+    else { statusBox.textContent = 'Ainda não ativadas neste aparelho.'; btn.style.display = 'inline-block'; }
+  }
+  async function handleEnableNotifications(){
+    const btn = document.getElementById('notif-enable-btn');
+    btn.disabled = true; btn.textContent = 'Ativando...';
+    const ok = window.enableNotifications ? await window.enableNotifications() : false;
+    btn.disabled = false; btn.textContent = 'Ativar notificações neste aparelho';
+    refreshNotifStatus();
+    if(!ok && window.getNotificationStatus && window.getNotificationStatus() === 'default'){
+      alert('Não foi possível ativar. Tente novamente e permita as notificações quando o navegador perguntar.');
+    }
+  }
+  function closeSettingsModal(){ document.getElementById('settings-overlay').classList.remove('open'); }
+  function saveSettings(){
+    const key = document.getElementById('settings-api-key').value.trim();
+    if(key) localStorage.setItem('anthropic_api_key', key); else localStorage.removeItem('anthropic_api_key');
+    const accent = window.__pendingAccent || window.currentTheme.accent;
+    const bg = window.__pendingBg || window.currentTheme.bg;
+    const font = document.getElementById('font-select').value;
+    applyTheme({ accent, bg, font }, true);
+    closeSettingsModal();
+    document.getElementById('api-key-banner').style.display = key ? 'none' : 'flex';
+    const active = document.querySelector('.seg-btn.active');
+    if(active) moveSegIndicator(active.dataset.tab);
+  }
+
+  /* ---------------- Global search ---------------- */
+  function handleSearchInput(){
+    const q = document.getElementById('global-search').value.trim().toLowerCase();
+    const box = document.getElementById('search-results');
+    if(!q){ box.classList.remove('open'); box.innerHTML=''; return; }
+    const apptMatches = (window.appointments||[]).filter(a=>a.title.toLowerCase().includes(q))
+      .map(a=>({ type:'appt', id:a.id, title:a.title, date:a.date, priority:a.priority }));
+    const taskMatches = (window.tasks||[]).filter(t=>
+      t.title.toLowerCase().includes(q) || (t.subtasks||[]).some(s=>s.title.toLowerCase().includes(q))
+    ).map(t=>({ type:'task', id:t.id, title:t.title, date:t.dueDate, priority:t.priority }));
+    const results = [...apptMatches, ...taskMatches].slice(0, 10);
+    box.innerHTML = '';
+    if(results.length===0){ box.innerHTML = '<div class="search-empty">Nenhum resultado para "' + escapeHtml(q) + '".</div>'; }
+    else {
+      results.forEach(r=>{
+        const pm = priorityMeta(r.priority);
+        const item = document.createElement('div'); item.className = 'search-result-item';
+        item.innerHTML = '<span class="search-tag" style="background:' + pm.hex + '">' + (r.type==='appt' ? 'Compromisso' : 'Tarefa') + '</span>' +
+          '<span class="search-result-title">' + escapeHtml(r.title) + '</span>' +
+          (r.date ? '<span class="search-result-date">' + formatDatePt(r.date) + '</span>' : '');
+        item.onclick = ()=> goToSearchResult(r);
+        box.appendChild(item);
+      });
+    }
+    box.classList.add('open');
+  }
+  function goToSearchResult(r){
+    document.getElementById('global-search').value = '';
+    document.getElementById('search-results').classList.remove('open');
+    if(r.type==='appt'){
+      const [y,m] = r.date.split('-');
+      currentDate = new Date(parseInt(y,10), parseInt(m,10)-1, 1);
+      switchTab('calendar'); renderCalendar(); openApptModal(r.date, r.id);
+    } else { switchTab('tasks'); openTaskModal(r.id); }
+  }
+  document.addEventListener('click', (e)=>{
+    if(!e.target.closest('.search-wrap')) document.getElementById('search-results').classList.remove('open');
+  });
+
+  /* ---------------- Calendar ---------------- */
+  const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function changeMonth(delta){ currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth()+delta, 1); renderCalendar(); }
+  function goToday(){ currentDate = new Date(); renderCalendar(); }
+
+  function renderCalendar(){
+    const year = currentDate.getFullYear(); const month = currentDate.getMonth();
+    document.getElementById('month-label').textContent = MONTHS[month] + ' ' + year;
+    const firstDay = new Date(year, month, 1);
+    const startWeekday = firstDay.getDay();
+    const daysInMonth = new Date(year, month+1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+    const today = todayStr();
+    const grid = document.getElementById('cal-grid'); grid.innerHTML = '';
+    const cells = [];
+    for(let i=startWeekday-1; i>=0; i--){ cells.push({ day: daysInPrevMonth-i, other:true, dateStr:null }); }
+    for(let d=1; d<=daysInMonth; d++){
+      const dateStr = year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+      cells.push({ day:d, other:false, dateStr });
+    }
+    while(cells.length % 7 !== 0 || cells.length < 42){
+      const nextDay = cells.length - (startWeekday + daysInMonth) + 1;
+      cells.push({ day: nextDay, other:true, dateStr:null });
+      if(cells.length >= 42) break;
+    }
+    cells.forEach(cell=>{
+      const div = document.createElement('div');
+      div.className = 'day-cell' + (cell.other ? ' other-month' : '');
+      if(cell.dateStr === today) div.classList.add('today');
+      const num = document.createElement('div'); num.className = 'day-num'; num.textContent = cell.day; div.appendChild(num);
+      if(cell.dateStr){
+        const dayAppts = (window.appointments||[]).filter(a=>a.date===cell.dateStr).sort((a,b)=> (a.time||'99:99').localeCompare(b.time||'99:99'));
+        const evWrap = document.createElement('div'); evWrap.className = 'day-events';
+        dayAppts.slice(0,3).forEach(a=>{
+          const chip = document.createElement('div'); chip.className = 'event-chip';
+          chip.style.background = priorityMeta(a.priority).hex;
+          chip.textContent = (a.time ? a.time+' ' : '') + a.title;
+          evWrap.appendChild(chip);
+        });
+        if(dayAppts.length > 3){
+          const more = document.createElement('div'); more.className = 'event-more';
+          more.textContent = '+' + (dayAppts.length-3) + ' mais'; evWrap.appendChild(more);
+        }
+        div.appendChild(evWrap);
+        div.onclick = ()=> openDayPanel(cell.dateStr);
+      }
+      grid.appendChild(div);
+    });
+  }
+
+  /* ---------------- Planejador (day timeline) ---------------- */
+  const PLANNER_HOURS = Array.from({ length: 16 }, (_, i) => 7 + i); // 7h às 22h
+  let plannerDate = new Date();
+  function plannerDateStr(){ return plannerDate.getFullYear() + '-' + String(plannerDate.getMonth()+1).padStart(2,'0') + '-' + String(plannerDate.getDate()).padStart(2,'0'); }
+  function changePlannerDay(delta){ plannerDate = new Date(plannerDate.getFullYear(), plannerDate.getMonth(), plannerDate.getDate()+delta); renderPlanner(); }
+  function goPlannerToday(){ plannerDate = new Date(); renderPlanner(); }
+  function formatHourLabel(h){ const period = h < 12 ? 'am' : 'pm'; let hh = h % 12; if(hh === 0) hh = 12; return hh + ' ' + period; }
+  function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+  function openApptModalAtTime(dateStr, hh){ openApptModal(dateStr); document.getElementById('appt-time').value = hh + ':00'; }
+
+  function renderPlanner(){
+    const container = document.getElementById('view-planner');
+    if(!container) return;
+    const dateStr = plannerDateStr();
+    const labelEl = document.getElementById('planner-day-label');
+    if(labelEl) labelEl.textContent = capitalize(weekdayPt(plannerDate)) + ', ' + formatDatePt(dateStr);
+
+    const dayAppts = (window.appointments || []).filter(a => a.date === dateStr);
+    const timed = dayAppts.filter(a => a.time).sort((a,b)=> a.time.localeCompare(b.time));
+    const allDay = dayAppts.filter(a => !a.time);
+
+    const alldayWrap = document.getElementById('planner-allday');
+    alldayWrap.innerHTML = '';
+    if(allDay.length){
+      const lbl = document.createElement('span'); lbl.className = 'planner-allday-label'; lbl.textContent = 'Dia inteiro';
+      alldayWrap.appendChild(lbl);
+      allDay.forEach(a=>{
+        const chip = document.createElement('span'); chip.className = 'planner-event-chip';
+        chip.style.background = priorityMeta(a.priority).hex;
+        chip.textContent = a.title;
+        chip.onclick = ()=> openApptModal(dateStr, a.id);
+        alldayWrap.appendChild(chip);
+      });
+      alldayWrap.style.display = 'flex';
+    } else { alldayWrap.style.display = 'none'; }
+
+    const hoursWrap = document.getElementById('planner-hours'); hoursWrap.innerHTML = '';
+    PLANNER_HOURS.forEach(h=>{
+      const row = document.createElement('div'); row.className = 'planner-hour-row';
+      const label = document.createElement('div'); label.className = 'planner-hour-label'; label.textContent = formatHourLabel(h);
+      const content = document.createElement('div'); content.className = 'planner-hour-content';
+      timed.filter(a=> parseInt(a.time.slice(0,2),10) === h).forEach(a=>{
+        const chip = document.createElement('div'); chip.className = 'planner-event-chip';
+        chip.style.background = priorityMeta(a.priority).hex;
+        chip.textContent = a.time + ' · ' + a.title;
+        chip.onclick = ()=> openApptModal(dateStr, a.id);
+        content.appendChild(chip);
+      });
+      const addBtn = document.createElement('button'); addBtn.className = 'planner-add-hour-btn'; addBtn.textContent = '+';
+      addBtn.title = 'Adicionar às ' + formatHourLabel(h);
+      addBtn.onclick = ()=> openApptModalAtTime(dateStr, String(h).padStart(2,'0'));
+      content.appendChild(addBtn);
+      row.appendChild(label); row.appendChild(content);
+      hoursWrap.appendChild(row);
+    });
+
+    const sideList = document.getElementById('planner-tasks-list'); sideList.innerHTML = '';
+    const dayTasks = (window.tasks || []).filter(t => t.dueDate === dateStr);
+    if(dayTasks.length === 0){
+      sideList.innerHTML = '<div class="planner-empty-note">Nenhuma tarefa para este dia.</div>';
+    } else {
+      dayTasks.forEach(t=>{
+        const pm = priorityMeta(t.priority);
+        const row = document.createElement('div'); row.className = 'planner-task-row';
+        const check = document.createElement('button'); check.className = 'task-check' + (t.done ? ' done' : '');
+        check.innerHTML = t.done ? '✓' : '';
+        check.onclick = (e)=>{ e.stopPropagation(); toggleTask(t.id); };
+        const main = document.createElement('div'); main.style.cssText = 'flex:1; cursor:pointer; min-width:0;';
+        main.onclick = ()=> openTaskModal(t.id);
+        main.innerHTML = '<div style="font-size:13px; font-weight:600;' + (t.done ? 'text-decoration:line-through;color:var(--ink-soft);' : '') + '">' + escapeHtml(t.title) + '</div>';
+        const badge = document.createElement('span'); badge.className = 'task-priority-badge'; badge.style.background = pm.hex; badge.textContent = pm.label;
+        row.appendChild(check); row.appendChild(main); row.appendChild(badge);
+        sideList.appendChild(row);
+      });
+    }
+  }
+
+  function openDayPanel(dateStr){
+    dayPanelDate = dateStr;
+    const [y,m,d] = dateStr.split('-');
+    document.getElementById('day-panel-title').textContent = d + ' de ' + MONTHS[parseInt(m,10)-1] + ' de ' + y;
+    const list = document.getElementById('day-panel-list'); list.innerHTML = '';
+    const dayAppts = (window.appointments||[]).filter(a=>a.date===dateStr).sort((a,b)=> (a.time||'99:99').localeCompare(b.time||'99:99'));
+    if(dayAppts.length === 0){ list.innerHTML = '<div class="empty-note">Nenhum compromisso neste dia.</div>'; }
+    else {
+      dayAppts.forEach(a=>{
+        const row = document.createElement('div'); row.className = 'day-panel-item';
+        row.style.borderLeftColor = priorityMeta(a.priority).hex;
+        const titleWrap = document.createElement('div'); titleWrap.style.cssText = 'display:flex; flex:1; gap:10px; cursor:pointer; min-width:0;';
+        titleWrap.onclick = ()=> openApptModal(dateStr, a.id);
+        titleWrap.innerHTML = '<div class="t">' + (a.time || '--:--') + '</div><div class="title">' + escapeHtml(a.title) + (a.planning ? ' <span class="has-notes" title="Tem anotações">📝</span>' : '') + '</div>';
+        const actions = document.createElement('div'); actions.className = 'row-icon-actions';
+        const editBtn = document.createElement('button'); editBtn.className = 'card-icon-btn'; editBtn.title = 'Editar'; editBtn.textContent = '✎';
+        editBtn.onclick = (e)=>{ e.stopPropagation(); openApptModal(dateStr, a.id); };
+        const delBtn = document.createElement('button'); delBtn.className = 'card-icon-btn danger'; delBtn.title = 'Excluir'; delBtn.textContent = '🗑';
+        delBtn.onclick = (e)=>{ e.stopPropagation(); deleteApptDirect(a.id); };
+        actions.appendChild(editBtn); actions.appendChild(delBtn);
+        row.appendChild(titleWrap); row.appendChild(actions);
+        list.appendChild(row);
+      });
+    }
+    document.getElementById('day-overlay').classList.add('open');
+  }
+  function closeDayPanel(){ document.getElementById('day-overlay').classList.remove('open'); }
+  function addFromDayPanel(){ const d = dayPanelDate; closeDayPanel(); openApptModal(d); }
+
+  function buildColorRow(containerId, selectedKey){
+    const row = document.getElementById(containerId); row.innerHTML = '';
+    PRIORITIES.forEach(p=>{
+      const opt = document.createElement('div');
+      opt.className = 'color-opt' + (p.key===selectedKey ? ' selected' : '');
+      opt.dataset.key = p.key;
+      opt.innerHTML = '<span class="swatch" style="background:' + p.hex + '"></span>' + p.label;
+      opt.onclick = ()=>{ row.querySelectorAll('.color-opt').forEach(o=>o.classList.remove('selected')); opt.classList.add('selected'); };
+      row.appendChild(opt);
+    });
+  }
+  function getSelectedColor(containerId){
+    const sel = document.querySelector('#' + containerId + ' .color-opt.selected');
+    return sel ? sel.dataset.key : 'normal';
+  }
+
+  function buildStatusRow(containerId, selectedKey){
+    const row = document.getElementById(containerId); row.innerHTML = '';
+    STATUSES.forEach(s=>{
+      const opt = document.createElement('div');
+      opt.className = 'color-opt' + (s.key===selectedKey ? ' selected' : '');
+      opt.dataset.key = s.key;
+      opt.innerHTML = '<span class="swatch status-dot-' + s.key + '"></span>' + s.label;
+      opt.onclick = ()=>{ row.querySelectorAll('.color-opt').forEach(o=>o.classList.remove('selected')); opt.classList.add('selected'); };
+      row.appendChild(opt);
+    });
+  }
+  function getSelectedStatus(containerId){
+    const sel = document.querySelector('#' + containerId + ' .color-opt.selected');
+    return sel ? sel.dataset.key : 'todo';
+  }
+
+  /* ---------------- Google Agenda ---------------- */
+  function pollForGoogleReady(cb, attempts){
+    attempts = attempts === undefined ? 20 : attempts;
+    if(window.google && google.accounts && google.accounts.oauth2){ cb(); return; }
+    if(attempts <= 0) return;
+    setTimeout(()=> pollForGoogleReady(cb, attempts - 1), 250);
+  }
+  function initGoogleClient(){
+    if(googleTokenClient || !window.google || !google.accounts) return;
+    googleTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: GOOGLE_SCOPE,
+      callback: (resp)=>{
+        if(resp && resp.access_token){
+          googleAccessToken = resp.access_token;
+          localStorage.setItem('google_calendar_connected', 'true');
+          refreshGoogleStatusUI();
+        }
+      }
+    });
+  }
+  function handleGoogleConnect(){
+    if(GOOGLE_CLIENT_ID.indexOf('SEU_CLIENT_ID') === 0){
+      alert('Configure o Client ID do Google primeiro (veja o guia de instalação, Parte 5).');
+      return;
+    }
+    initGoogleClient();
+    if(!googleTokenClient){
+      alert('Ainda carregando os componentes do Google. Tente novamente em alguns segundos.');
+      return;
+    }
+    googleTokenClient.requestAccessToken({ prompt: googleAccessToken ? '' : 'consent' });
+  }
+  function refreshGoogleStatusUI(){
+    const statusBox = document.getElementById('google-status');
+    const connectBtn = document.getElementById('google-connect-btn');
+    const importBtn = document.getElementById('google-import-btn');
+    if(!statusBox) return;
+    if(googleAccessToken){
+      statusBox.textContent = 'Conectado ✓';
+      connectBtn.textContent = 'Reconectar';
+      importBtn.style.display = 'inline-block';
+    } else {
+      statusBox.textContent = 'Não conectado.';
+      connectBtn.textContent = 'Conectar Google Agenda';
+      importBtn.style.display = 'none';
+    }
+  }
+  async function gcalFetch(path, options){
+    options = options || {};
+    const res = await fetch('https://www.googleapis.com/calendar/v3' + path, {
+      ...options,
+      headers: { 'Authorization': 'Bearer ' + googleAccessToken, 'Content-Type': 'application/json', ...(options.headers||{}) }
+    });
+    if(!res.ok){ const errText = await res.text(); throw new Error('Google API: ' + res.status + ' ' + errText); }
+    return res.status === 204 ? null : res.json();
+  }
+  function addOneHourIso(date, time){
+    const [h,m] = time.split(':').map(Number);
+    let endH = h + 1; let d = date;
+    if(endH >= 24) endH -= 24;
+    return d + 'T' + String(endH).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':00-03:00';
+  }
+  function apptToGoogleEvent(appt){
+    const body = { summary: appt.title, description: appt.planning || '' };
+    if(appt.time){
+      body.start = { dateTime: appt.date + 'T' + appt.time + ':00-03:00' };
+      body.end = { dateTime: addOneHourIso(appt.date, appt.time) };
+    } else {
+      body.start = { date: appt.date };
+      body.end = { date: appt.date };
+    }
+    return body;
+  }
+  async function createGoogleEvent(appt){
+    const data = await gcalFetch('/calendars/primary/events', { method:'POST', body: JSON.stringify(apptToGoogleEvent(appt)) });
+    return data.id;
+  }
+  async function updateGoogleEvent(appt){
+    await gcalFetch('/calendars/primary/events/' + appt.googleEventId, { method:'PATCH', body: JSON.stringify(apptToGoogleEvent(appt)) });
+  }
+  async function deleteGoogleEvent(id){
+    try{ await gcalFetch('/calendars/primary/events/' + id, { method:'DELETE' }); }
+    catch(e){ console.warn('Evento já não existia no Google Agenda ou falhou ao remover', e); }
+  }
+  async function handleImportGoogleEvents(){
+    if(!googleAccessToken){ alert('Conecte o Google Agenda primeiro.'); return; }
+    const btn = document.getElementById('google-import-btn');
+    btn.disabled = true; btn.textContent = 'Importando...';
+    try{
+      const timeMin = new Date().toISOString();
+      const future = new Date(); future.setDate(future.getDate() + 60);
+      const timeMax = future.toISOString();
+      const data = await gcalFetch('/calendars/primary/events?timeMin=' + encodeURIComponent(timeMin) + '&timeMax=' + encodeURIComponent(timeMax) + '&singleEvents=true&orderBy=startTime&maxResults=250');
+      const existingIds = new Set((window.appointments||[]).map(a=>a.googleEventId).filter(Boolean));
+      let count = 0;
+      (data.items||[]).forEach(ev=>{
+        if(existingIds.has(ev.id) || !ev.start) return;
+        const startDate = ev.start.date || (ev.start.dateTime||'').slice(0,10);
+        const startTime = ev.start.dateTime ? ev.start.dateTime.slice(11,16) : '';
+        if(!startDate) return;
+        window.appointments.push({ id: uid(), title: ev.summary || '(sem título)', date: startDate, time: startTime, priority:'normal', planning: ev.description||'', googleEventId: ev.id, notified:false });
+        count++;
+      });
+      await persist(); renderCalendar(); renderReminders();
+      alert(count + ' evento(s) importado(s) do Google Agenda.');
+    } catch(e){
+      console.error(e);
+      alert('Não foi possível importar. Tente reconectar o Google Agenda em Configurações.');
+    }
+    btn.disabled = false; btn.textContent = 'Importar eventos futuros';
+  }
+
+  function openApptModal(dateStr, apptId){
+    editingApptId = apptId || null;
+    const appt = apptId ? (window.appointments||[]).find(a=>a.id===apptId) : null;
+    document.getElementById('appt-modal-title').textContent = appt ? 'Editar compromisso' : 'Novo compromisso';
+    document.getElementById('appt-title').value = appt ? appt.title : '';
+    document.getElementById('appt-date').value = appt ? appt.date : dateStr;
+    document.getElementById('appt-time').value = appt ? (appt.time||'') : '';
+    document.getElementById('appt-planning').value = appt ? (appt.planning||'') : '';
+    buildColorRow('appt-color-row', appt ? appt.priority : 'normal');
+    document.getElementById('appt-delete-btn').style.visibility = appt ? 'visible' : 'hidden';
+    document.getElementById('day-overlay').classList.remove('open');
+    document.getElementById('appt-overlay').classList.add('open');
+  }
+  function closeApptModal(){ document.getElementById('appt-overlay').classList.remove('open'); }
+
+  async function saveAppt(){
+    const title = document.getElementById('appt-title').value.trim();
+    const date = document.getElementById('appt-date').value;
+    if(!title || !date){ alert('Preencha ao menos o título e a data.'); return; }
+    const time = document.getElementById('appt-time').value;
+    const priority = getSelectedColor('appt-color-row');
+    const planning = document.getElementById('appt-planning').value.trim();
+    let apptObj;
+    if(editingApptId){
+      const idx = window.appointments.findIndex(a=>a.id===editingApptId);
+      window.appointments[idx] = { ...window.appointments[idx], title, date, time, priority, planning };
+      apptObj = window.appointments[idx];
+    } else {
+      apptObj = { id: uid(), title, date, time, priority, planning, notified:false };
+      window.appointments.push(apptObj);
+    }
+    if(googleAccessToken){
+      try{
+        if(apptObj.googleEventId) await updateGoogleEvent(apptObj);
+        else apptObj.googleEventId = await createGoogleEvent(apptObj);
+      } catch(e){ console.warn('Falha ao sincronizar com Google Agenda', e); }
+    }
+    await persist(); closeApptModal(); renderCalendar(); renderReminders();
+  }
+  async function deleteAppt(){
+    if(!editingApptId) return;
+    const appt = window.appointments.find(a=>a.id===editingApptId);
+    if(appt && appt.googleEventId && googleAccessToken) await deleteGoogleEvent(appt.googleEventId);
+    window.appointments = window.appointments.filter(a=>a.id!==editingApptId);
+    await persist(); closeApptModal(); renderCalendar(); renderReminders();
+  }
+  async function deleteApptDirect(id){
+    if(!confirm('Excluir este compromisso?')) return;
+    const appt = window.appointments.find(a=>a.id===id);
+    if(appt && appt.googleEventId && googleAccessToken) await deleteGoogleEvent(appt.googleEventId);
+    window.appointments = window.appointments.filter(a=>a.id!==id);
+    await persist(); renderCalendar(); renderReminders();
+    if(dayPanelDate) openDayPanel(dayPanelDate);
+  }
+
+  /* ---------------- Tasks & subtasks ---------------- */
+  function setFilter(f){
+    taskFilter = f;
+    document.querySelectorAll('#filter-row .filter-chip').forEach(b=>b.classList.toggle('active', b.dataset.filter===f));
+    renderTasks();
+  }
+  /* ---------------- Boards (quadros) ---------------- */
+  let editingBoardId = null;
+  function renderBoardSwitcher(){
+    const wrap = document.getElementById('board-switcher');
+    if(!wrap) return;
+    wrap.innerHTML = '';
+    (window.boards || []).forEach(b=>{
+      const pill = document.createElement('div');
+      pill.className = 'board-pill' + (b.id===window.activeBoardId ? ' active' : '');
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = b.name;
+      nameSpan.onclick = ()=> selectBoard(b.id);
+      const editBtn = document.createElement('button');
+      editBtn.className = 'board-edit-btn'; editBtn.title = 'Renomear/excluir'; editBtn.textContent = '✎';
+      editBtn.onclick = (e)=>{ e.stopPropagation(); openBoardModal(b.id); };
+      pill.appendChild(nameSpan); pill.appendChild(editBtn);
+      wrap.appendChild(pill);
+    });
+    const addBtn = document.createElement('button');
+    addBtn.className = 'board-pill-add';
+    addBtn.textContent = '+ Novo quadro';
+    addBtn.onclick = ()=> openBoardModal(null);
+    wrap.appendChild(addBtn);
+  }
+  function selectBoard(id){
+    window.activeBoardId = id;
+    localStorage.setItem('agenda_active_board', id);
+    renderBoardSwitcher(); renderTasks(); renderKanban();
+  }
+  function openBoardModal(boardId){
+    editingBoardId = boardId || null;
+    const b = boardId ? (window.boards||[]).find(x=>x.id===boardId) : null;
+    document.getElementById('board-modal-title').textContent = b ? 'Editar quadro' : 'Novo quadro';
+    document.getElementById('board-name-input').value = b ? b.name : '';
+    document.getElementById('board-delete-btn').style.visibility = (b && window.boards.length > 1) ? 'visible' : 'hidden';
+    document.getElementById('board-overlay').classList.add('open');
+  }
+  function closeBoardModal(){ document.getElementById('board-overlay').classList.remove('open'); }
+  async function saveBoard(){
+    const name = document.getElementById('board-name-input').value.trim();
+    if(!name){ alert('Digite um nome para o quadro.'); return; }
+    if(editingBoardId){
+      const b = window.boards.find(x=>x.id===editingBoardId);
+      if(b) b.name = name;
+    } else {
+      const newBoard = { id: uid(), name };
+      window.boards.push(newBoard);
+      window.activeBoardId = newBoard.id;
+      localStorage.setItem('agenda_active_board', newBoard.id);
+    }
+    await persist();
+    closeBoardModal(); renderBoardSwitcher(); renderTasks(); renderKanban();
+  }
+  async function deleteBoard(){
+    if(!editingBoardId) return;
+    if(window.boards.length <= 1){ alert('Você precisa manter ao menos um quadro.'); return; }
+    if(!confirm('Excluir este quadro e todas as tarefas dentro dele? Essa ação não pode ser desfeita.')) return;
+    window.tasks = window.tasks.filter(t=>t.boardId !== editingBoardId);
+    window.boards = window.boards.filter(b=>b.id !== editingBoardId);
+    if(window.activeBoardId === editingBoardId){
+      window.activeBoardId = window.boards[0].id;
+      localStorage.setItem('agenda_active_board', window.activeBoardId);
+    }
+    await persist();
+    closeBoardModal(); renderBoardSwitcher(); renderTasks(); renderKanban(); renderReminders();
+  }
+
+  function renderTasks(){
+    const list = document.getElementById('task-list'); list.innerHTML = '';
+    let filtered = (window.tasks || []).filter(t => (t.boardId || (window.boards[0] && window.boards[0].id)) === window.activeBoardId);
+    if(taskFilter==='pendentes') filtered = filtered.filter(t=> taskStatus(t)==='todo');
+    if(taskFilter==='andamento') filtered = filtered.filter(t=> taskStatus(t)==='doing');
+    if(taskFilter==='concluidas') filtered = filtered.filter(t=> taskStatus(t)==='done');
+    filtered = [...filtered].sort((a,b)=>{ if(a.done !== b.done) return a.done ? 1 : -1; return (a.dueDate||'9999').localeCompare(b.dueDate||'9999'); });
+    if(filtered.length===0){ list.innerHTML = '<div class="empty-state"><div class="big">Nenhuma tarefa por aqui</div>Adicione uma tarefa para começar a acompanhar.</div>'; return; }
+    filtered.forEach(t=>{
+      const pm = priorityMeta(t.priority);
+      const subtasks = t.subtasks || [];
+      const doneCount = subtasks.filter(s=>s.done).length;
+      const isExpanded = expandedTaskIds.has(t.id);
+      const row = document.createElement('div'); row.className = 'task-row' + (t.done ? ' done' : ''); row.style.borderLeftColor = pm.hex;
+      const mainRow = document.createElement('div'); mainRow.className = 'task-row-main';
+      const check = document.createElement('button');
+      check.className = 'task-check' + (t.done ? ' done' : '');
+      check.innerHTML = t.done ? '✓' : '';
+      check.onclick = (e)=>{ e.stopPropagation(); toggleTask(t.id); };
+      const main = document.createElement('div'); main.className = 'task-main';
+      main.onclick = ()=> openTaskModal(t.id);
+      main.innerHTML = '<div class="task-title">' + escapeHtml(t.title) + (t.planning ? ' <span class="has-notes" title="Tem anotações">📝</span>' : '') + '</div>' +
+        '<div class="task-meta">' +
+          (t.dueDate ? '<span class="task-date">' + formatDatePt(t.dueDate) + '</span>' : '') +
+          '<span class="task-priority-badge" style="background:' + pm.hex + '">' + pm.label + '</span>' +
+          (taskStatus(t)==='doing' ? '<span class="status-badge-doing">Em andamento</span>' : '') +
+          (subtasks.length ? '<span class="task-sub-badge">' + doneCount + '/' + subtasks.length + ' subtarefas</span>' : '') +
+        '</div>';
+      mainRow.appendChild(check); mainRow.appendChild(main);
+      if(subtasks.length){
+        const expandBtn = document.createElement('button'); expandBtn.className = 'task-expand-btn';
+        expandBtn.textContent = isExpanded ? '▲' : '▼';
+        expandBtn.onclick = (e)=>{ e.stopPropagation(); toggleExpand(t.id); };
+        mainRow.appendChild(expandBtn);
+      }
+      const actions = document.createElement('div'); actions.className = 'row-icon-actions';
+      const editBtn = document.createElement('button'); editBtn.className = 'card-icon-btn'; editBtn.title = 'Editar'; editBtn.textContent = '✎';
+      editBtn.onclick = (e)=>{ e.stopPropagation(); openTaskModal(t.id); };
+      const del = document.createElement('button'); del.className = 'card-icon-btn danger'; del.title = 'Excluir'; del.textContent = '🗑';
+      del.onclick = (e)=>{ e.stopPropagation(); if(confirm('Excluir esta tarefa?')) removeTaskDirect(t.id); };
+      actions.appendChild(editBtn); actions.appendChild(del);
+      mainRow.appendChild(actions);
+      row.appendChild(mainRow);
+      if(subtasks.length && isExpanded){
+        const panel = document.createElement('div'); panel.className = 'task-subtasks-panel';
+        subtasks.forEach(s=>{
+          const sr = document.createElement('div'); sr.className = 'sub-row';
+          sr.innerHTML = '<input type="checkbox" ' + (s.done?'checked':'') + ' /><span class="' + (s.done?'done':'') + '">' + escapeHtml(s.title) + '</span>';
+          sr.querySelector('input').onchange = ()=> toggleSubtaskDirect(t.id, s.id);
+          panel.appendChild(sr);
+        });
+        row.appendChild(panel);
+      }
+      list.appendChild(row);
+    });
+  }
+  function setTaskView(mode){
+    taskViewMode = mode;
+    localStorage.setItem('agenda_task_view', mode);
+    document.querySelectorAll('.view-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.view===mode));
+    document.getElementById('task-list').style.display = mode==='lista' ? 'flex' : 'none';
+    document.getElementById('kanban-board').style.display = mode==='kanban' ? 'flex' : 'none';
+    document.getElementById('filter-row').style.display = mode==='lista' ? 'flex' : 'none';
+    if(mode==='kanban') renderKanban();
+  }
+
+  function renderKanban(){
+    const board = document.getElementById('kanban-board');
+    if(!board) return;
+    board.innerHTML = '';
+    const tasksArr = (window.tasks || []).filter(t => (t.boardId || (window.boards[0] && window.boards[0].id)) === window.activeBoardId);
+    STATUSES.forEach(col=>{
+      const colTasks = tasksArr.filter(t => taskStatus(t) === col.key)
+        .sort((a,b)=> (a.dueDate||'9999').localeCompare(b.dueDate||'9999'));
+
+      const colDiv = document.createElement('div'); colDiv.className = 'kanban-column';
+      const header = document.createElement('div'); header.className = 'kanban-col-header';
+      header.innerHTML = '<span class="kanban-col-title">' + col.label + '</span><span class="kanban-col-count">' + colTasks.length + '</span>';
+      colDiv.appendChild(header);
+
+      const cardsWrap = document.createElement('div'); cardsWrap.className = 'kanban-cards';
+      cardsWrap.ondragover = (e)=>{ e.preventDefault(); cardsWrap.classList.add('drag-over'); };
+      cardsWrap.ondragleave = ()=> cardsWrap.classList.remove('drag-over');
+      cardsWrap.ondrop = (e)=>{
+        e.preventDefault(); cardsWrap.classList.remove('drag-over');
+        const taskId = e.dataTransfer.getData('text/plain');
+        const t = window.tasks.find(x=>x.id===taskId);
+        if(t) setTaskStatus(t, col.key);
+      };
+
+      if(colTasks.length === 0){
+        const empty = document.createElement('div'); empty.className = 'kanban-empty'; empty.textContent = 'Arraste tarefas para cá';
+        cardsWrap.appendChild(empty);
+      }
+
+      colTasks.forEach(t=>{
+        const pm = priorityMeta(t.priority);
+        const subtasks = t.subtasks || [];
+        const doneCount = subtasks.filter(s=>s.done).length;
+        const idx = STATUS_ORDER.indexOf(col.key);
+
+        const card = document.createElement('div');
+        card.className = 'kanban-card' + (col.key==='done' ? ' done' : '');
+        card.style.setProperty('--card-color', pm.hex);
+        card.draggable = true;
+        card.ondragstart = (e)=>{ e.dataTransfer.setData('text/plain', t.id); card.classList.add('dragging'); };
+        card.ondragend = ()=> card.classList.remove('dragging');
+
+        const top = document.createElement('div'); top.className = 'kanban-card-top';
+        const titleEl = document.createElement('div'); titleEl.className = 'kanban-card-title';
+        titleEl.innerHTML = escapeHtml(t.title) + (t.planning ? ' <span class="has-notes" title="Tem anotações">📝</span>' : '');
+        titleEl.style.cursor = 'pointer';
+        titleEl.onclick = ()=> openTaskModal(t.id);
+        const actions = document.createElement('div'); actions.className = 'kanban-card-actions';
+        const editBtn = document.createElement('button'); editBtn.className = 'card-icon-btn'; editBtn.title = 'Editar'; editBtn.textContent = '✎';
+        editBtn.onclick = (e)=>{ e.stopPropagation(); openTaskModal(t.id); };
+        const delBtn = document.createElement('button'); delBtn.className = 'card-icon-btn danger'; delBtn.title = 'Excluir'; delBtn.textContent = '🗑';
+        delBtn.onclick = (e)=>{ e.stopPropagation(); if(confirm('Excluir esta tarefa?')) removeTaskDirect(t.id); };
+        actions.appendChild(editBtn); actions.appendChild(delBtn);
+        top.appendChild(titleEl); top.appendChild(actions);
+        card.appendChild(top);
+
+        const meta = document.createElement('div'); meta.className = 'kanban-card-meta';
+        meta.innerHTML =
+          (t.dueDate ? '<span class="task-date">' + formatDatePt(t.dueDate) + '</span>' : '') +
+          '<span class="task-priority-badge" style="background:' + pm.hex + '">' + pm.label + '</span>' +
+          (subtasks.length ? '<span class="task-sub-badge">' + doneCount + '/' + subtasks.length + '</span>' : '');
+        card.appendChild(meta);
+
+        const moveRow = document.createElement('div'); moveRow.className = 'kanban-move-row';
+        const prevBtn = document.createElement('button'); prevBtn.className = 'kanban-move-btn'; prevBtn.textContent = '← ' + (STATUSES[idx-1] ? STATUSES[idx-1].label : '');
+        prevBtn.disabled = idx === 0;
+        prevBtn.onclick = (e)=>{ e.stopPropagation(); setTaskStatus(t, STATUS_ORDER[idx-1]); };
+        const nextBtn = document.createElement('button'); nextBtn.className = 'kanban-move-btn'; nextBtn.textContent = (STATUSES[idx+1] ? STATUSES[idx+1].label : '') + ' →';
+        nextBtn.disabled = idx === STATUS_ORDER.length - 1;
+        nextBtn.onclick = (e)=>{ e.stopPropagation(); setTaskStatus(t, STATUS_ORDER[idx+1]); };
+        moveRow.appendChild(prevBtn); moveRow.appendChild(nextBtn);
+        card.appendChild(moveRow);
+
+        cardsWrap.appendChild(card);
+      });
+
+      colDiv.appendChild(cardsWrap);
+
+      const addBtn = document.createElement('button');
+      addBtn.className = 'kanban-add-btn';
+      addBtn.textContent = '+ Adicionar tarefa';
+      addBtn.onclick = ()=> openTaskModal(null, col.key);
+      colDiv.appendChild(addBtn);
+
+      board.appendChild(colDiv);
+    });
+  }
+
+  async function setTaskStatus(t, status){
+    t.status = status;
+    t.done = status === 'done';
+    await persist();
+    renderKanban(); renderTasks(); renderReminders();
+  }
+
+  function toggleExpand(id){ if(expandedTaskIds.has(id)) expandedTaskIds.delete(id); else expandedTaskIds.add(id); renderTasks(); }
+  async function toggleSubtaskDirect(taskId, subId){
+    const t = window.tasks.find(x=>x.id===taskId); if(!t) return;
+    const s = (t.subtasks||[]).find(x=>x.id===subId); if(!s) return;
+    s.done = !s.done; await persist(); renderTasks();
+  }
+  async function toggleTask(id){
+    const t = window.tasks.find(x=>x.id===id); if(!t) return;
+    t.done = !t.done;
+    t.status = t.done ? 'done' : 'todo';
+    await persist(); renderTasks(); renderKanban(); renderReminders();
+  }
+  async function removeTaskDirect(id){
+    window.tasks = window.tasks.filter(t=>t.id!==id); expandedTaskIds.delete(id);
+    await persist(); renderTasks(); renderKanban(); renderReminders();
+  }
+
+  function openTaskModal(taskId, defaultStatus){
+    editingTaskId = taskId || null;
+    const t = taskId ? window.tasks.find(x=>x.id===taskId) : null;
+    document.getElementById('task-modal-title').textContent = t ? 'Editar tarefa' : 'Nova tarefa';
+    document.getElementById('task-title').value = t ? t.title : '';
+    document.getElementById('task-date').value = t ? (t.dueDate||'') : todayStr();
+    document.getElementById('task-planning').value = t ? (t.planning||'') : '';
+    buildColorRow('task-color-row', t ? t.priority : 'normal');
+    buildStatusRow('task-status-row', t ? taskStatus(t) : (defaultStatus || 'todo'));
+    document.getElementById('task-delete-btn').style.visibility = t ? 'visible' : 'hidden';
+    editingSubtasks = t ? JSON.parse(JSON.stringify(t.subtasks||[])) : [];
+    document.getElementById('subtask-new-title').value = '';
+    renderSubtaskEditList();
+    document.getElementById('task-overlay').classList.add('open');
+  }
+  function closeTaskModal(){ document.getElementById('task-overlay').classList.remove('open'); }
+  function renderSubtaskEditList(){
+    const wrap = document.getElementById('subtask-list'); wrap.innerHTML = '';
+    editingSubtasks.forEach(s=>{
+      const row = document.createElement('div'); row.className = 'subtask-edit-row';
+      row.innerHTML = '<input type="checkbox" ' + (s.done?'checked':'') + ' />' +
+        '<span class="st-title ' + (s.done?'done':'') + '">' + escapeHtml(s.title) + '</span>' +
+        '<button class="subtask-del" type="button">✕</button>';
+      row.querySelector('input').onchange = ()=>{ s.done = !s.done; renderSubtaskEditList(); };
+      row.querySelector('.subtask-del').onclick = ()=>{ editingSubtasks = editingSubtasks.filter(x=>x.id!==s.id); renderSubtaskEditList(); };
+      wrap.appendChild(row);
+    });
+  }
+  function addSubtaskField(){
+    const input = document.getElementById('subtask-new-title');
+    const title = input.value.trim(); if(!title) return;
+    editingSubtasks.push({ id: uid(), title, done:false });
+    input.value = ''; renderSubtaskEditList(); input.focus();
+  }
+  async function saveTask(){
+    const title = document.getElementById('task-title').value.trim();
+    if(!title){ alert('Digite um título para a tarefa.'); return; }
+    const dueDate = document.getElementById('task-date').value;
+    const priority = getSelectedColor('task-color-row');
+    const status = getSelectedStatus('task-status-row');
+    const done = status === 'done';
+    const subtasks = editingSubtasks;
+    const planning = document.getElementById('task-planning').value.trim();
+    if(editingTaskId){
+      const idx = window.tasks.findIndex(t=>t.id===editingTaskId);
+      const boardId = window.tasks[idx].boardId || window.activeBoardId;
+      window.tasks[idx] = { ...window.tasks[idx], title, dueDate, priority, subtasks, status, done, planning, boardId };
+    } else { window.tasks.push({ id: uid(), title, dueDate, priority, done, status, subtasks, planning, boardId: window.activeBoardId, notified:false }); }
+    await persist(); closeTaskModal(); renderTasks(); renderKanban(); renderReminders();
+  }
+  async function deleteTask(){
+    if(!editingTaskId) return;
+    window.tasks = window.tasks.filter(t=>t.id!==editingTaskId); expandedTaskIds.delete(editingTaskId);
+    await persist(); closeTaskModal(); renderTasks(); renderKanban(); renderReminders();
+  }
+
+  /* ---------------- Reminders banner ---------------- */
+  function renderReminders(){
+    const banner = document.getElementById('reminders-banner');
+    const today = todayStr();
+    const todayAppts = (window.appointments||[]).filter(a=>a.date===today).sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
+    const overdueTasks = (window.tasks||[]).filter(t=>!t.done && t.dueDate && t.dueDate < today);
+    const todayTasks = (window.tasks||[]).filter(t=>!t.done && t.dueDate === today);
+    const pills = [];
+    todayAppts.forEach(a=>{ pills.push({ label:(a.time?a.time+' ':'')+a.title, color:priorityMeta(a.priority).hex, action:()=>{ switchTab('calendar'); openApptModal(a.date, a.id); } }); });
+    todayTasks.forEach(t=>{ pills.push({ label:'Tarefa: '+t.title, color:priorityMeta(t.priority).hex, action:()=>{ switchTab('tasks'); openTaskModal(t.id); } }); });
+    overdueTasks.forEach(t=>{ pills.push({ label:'Atrasada: '+t.title, color:priorityMeta(t.priority).hex, overdue:true, action:()=>{ switchTab('tasks'); openTaskModal(t.id); } }); });
+    banner.innerHTML = '';
+    if(pills.length === 0){ banner.classList.remove('show'); renderPlanner(); return; }
+    pills.forEach(p=>{
+      const el = document.createElement('div'); el.className = 'reminder-pill' + (p.overdue ? ' overdue' : '');
+      el.innerHTML = '<span class="dot" style="background:' + p.color + '"></span>' + escapeHtml(p.label);
+      el.onclick = p.action; banner.appendChild(el);
+    });
+    banner.classList.add('show');
+    renderPlanner();
+  }
+
+  /* ---------------- Finanças ---------------- */
+  function financeMonthStr(){ return financeDate.getFullYear() + '-' + String(financeDate.getMonth()+1).padStart(2,'0'); }
+  function changeFinanceMonth(delta){ financeDate = new Date(financeDate.getFullYear(), financeDate.getMonth()+delta, 1); renderFinance(); }
+  function goFinanceToday(){ financeDate = new Date(); renderFinance(); }
+
+  function buildTypeToggle(selected){
+    const wrap = document.getElementById('tx-type-toggle');
+    wrap.querySelectorAll('button').forEach(b=>{
+      b.classList.toggle('active', b.dataset.type===selected);
+      b.classList.toggle(b.dataset.type, true);
+      b.onclick = ()=>{ wrap.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); };
+    });
+  }
+  function getSelectedType(){
+    const sel = document.querySelector('#tx-type-toggle button.active');
+    return sel ? sel.dataset.type : 'despesa';
+  }
+  function buildCategorySelect(selected){
+    const sel = document.getElementById('tx-category'); sel.innerHTML = '';
+    (window.categories||[]).forEach(c=>{
+      const opt = document.createElement('option'); opt.value = c.id; opt.textContent = c.label;
+      if(c.id === selected) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+  function buildMethodSelect(selected){
+    const sel = document.getElementById('tx-method'); sel.innerHTML = '';
+    PAYMENT_METHODS.forEach(m=>{
+      const opt = document.createElement('option'); opt.value = m.key; opt.textContent = m.label;
+      if(m.key === selected) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+  function buildCardSelect(selected){
+    const sel = document.getElementById('tx-card'); sel.innerHTML = '';
+    (window.creditCards||[]).forEach(c=>{
+      const opt = document.createElement('option'); opt.value = c.id; opt.textContent = c.name;
+      if(c.id === selected) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+  function toggleTxCardField(){
+    const method = document.getElementById('tx-method').value;
+    document.getElementById('tx-card-field').style.display = method === 'cartao' ? 'block' : 'none';
+  }
+
+  function updateInstallmentFieldUI(t){
+    const field = document.getElementById('installment-field');
+    if(t && t.installmentGroupId){
+      field.innerHTML = '<div class="helptext">Parcela ' + t.installmentNumber + ' de ' + t.installmentTotal +
+        ' desta compra. Para mudar o parcelamento, exclua e cadastre a compra novamente.</div>';
+    } else {
+      field.innerHTML =
+        '<label style="display:flex; align-items:center; gap:6px; text-transform:none; font-weight:600; color:var(--ink); cursor:pointer;">' +
+          '<input type="checkbox" id="tx-installment-toggle" onchange="toggleInstallmentFields()" style="width:auto;" />Compra parcelada' +
+        '</label>' +
+        '<div id="installment-details" style="display:none; margin-top:8px;">' +
+          '<label>Número de parcelas</label>' +
+          '<input type="number" id="tx-installments-count" min="2" max="60" value="2" />' +
+          '<div class="helptext">O valor informado acima é o total da compra — será dividido igualmente entre as parcelas, uma por mês, a partir da data escolhida.</div>' +
+        '</div>';
+    }
+  }
+  function toggleInstallmentFields(){
+    const cb = document.getElementById('tx-installment-toggle');
+    const details = document.getElementById('installment-details');
+    if(details) details.style.display = (cb && cb.checked) ? 'block' : 'none';
+  }
+  function addMonthsToDateStr(dateStr, monthsToAdd){
+    const [y,m,d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1 + monthsToAdd, d);
+    return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+  }
+
+  function openTxModal(txId){
+    editingTxId = txId || null;
+    const t = txId ? window.transactions.find(x=>x.id===txId) : null;
+    document.getElementById('tx-modal-title').textContent = t ? 'Editar lançamento' : 'Novo lançamento';
+    buildTypeToggle(t ? t.type : 'despesa');
+    document.getElementById('tx-desc').value = t ? t.description : '';
+    document.getElementById('tx-amount').value = t ? t.amount : '';
+    document.getElementById('tx-date').value = t ? t.date : (financeMonthStr() + '-' + String(new Date().getDate()).padStart(2,'0'));
+    buildCategorySelect(t ? t.category : 'outros');
+    buildMethodSelect(t ? t.method : 'dinheiro');
+    buildCardSelect(t ? t.cardId : null);
+    toggleTxCardField();
+    updateInstallmentFieldUI(t);
+    document.getElementById('tx-delete-btn').style.visibility = t ? 'visible' : 'hidden';
+    document.getElementById('tx-overlay').classList.add('open');
+  }
+  function closeTxModal(){ document.getElementById('tx-overlay').classList.remove('open'); }
+  async function saveTx(){
+    const description = document.getElementById('tx-desc').value.trim();
+    const amount = parseFloat(document.getElementById('tx-amount').value);
+    const date = document.getElementById('tx-date').value;
+    if(!description || !date || isNaN(amount) || amount <= 0){ alert('Preencha descrição, valor e data corretamente.'); return; }
+    const type = getSelectedType();
+    const category = document.getElementById('tx-category').value;
+    const method = document.getElementById('tx-method').value;
+    const cardId = method === 'cartao' ? document.getElementById('tx-card').value : null;
+
+    const installmentCb = document.getElementById('tx-installment-toggle');
+    const isNewInstallment = !editingTxId && installmentCb && installmentCb.checked;
+
+    if(isNewInstallment){
+      const count = parseInt(document.getElementById('tx-installments-count').value, 10) || 2;
+      if(count < 2){ alert('Número de parcelas deve ser 2 ou mais.'); return; }
+      const groupId = uid();
+      const perInstallment = Math.round((amount / count) * 100) / 100;
+      let allocated = 0;
+      for(let i = 0; i < count; i++){
+        const isLast = i === count - 1;
+        const instAmount = isLast ? Math.round((amount - allocated) * 100) / 100 : perInstallment;
+        allocated += instAmount;
+        const instDate = addMonthsToDateStr(date, i);
+        window.transactions.push({
+          id: uid(), type, description: description + ' (' + (i+1) + '/' + count + ')', amount: instAmount,
+          date: instDate, category, method, cardId,
+          installmentGroupId: groupId, installmentNumber: i+1, installmentTotal: count
+        });
+      }
+    } else if(editingTxId){
+      const idx = window.transactions.findIndex(x=>x.id===editingTxId);
+      window.transactions[idx] = { ...window.transactions[idx], type, description, amount, date, category, method, cardId };
+    } else {
+      window.transactions.push({ id: uid(), type, description, amount, date, category, method, cardId });
+    }
+    await persist(); closeTxModal(); renderFinance();
+  }
+  async function deleteTx(){
+    if(!editingTxId) return;
+    const tx = window.transactions.find(x=>x.id===editingTxId);
+    if(tx && tx.installmentGroupId){
+      const deleteAll = confirm('Esta é a parcela ' + tx.installmentNumber + '/' + tx.installmentTotal + '. Clique OK para excluir TODAS as parcelas desta compra, ou Cancelar para excluir só esta.');
+      if(deleteAll) window.transactions = window.transactions.filter(x=>x.installmentGroupId!==tx.installmentGroupId);
+      else window.transactions = window.transactions.filter(x=>x.id!==editingTxId);
+    } else {
+      window.transactions = window.transactions.filter(x=>x.id!==editingTxId);
+    }
+    await persist(); closeTxModal(); renderFinance();
+  }
+  async function deleteTxDirect(id){
+    const tx = window.transactions.find(x=>x.id===id);
+    if(!tx) return;
+    if(tx.installmentGroupId){
+      const deleteAll = confirm('Esta é a parcela ' + tx.installmentNumber + '/' + tx.installmentTotal + '. Clique OK para excluir TODAS as parcelas desta compra, ou Cancelar para excluir só esta.');
+      if(deleteAll) window.transactions = window.transactions.filter(x=>x.installmentGroupId!==tx.installmentGroupId);
+      else { if(!confirm('Excluir apenas esta parcela?')) return; window.transactions = window.transactions.filter(x=>x.id!==id); }
+    } else {
+      if(!confirm('Excluir este lançamento?')) return;
+      window.transactions = window.transactions.filter(x=>x.id!==id);
+    }
+    await persist(); renderFinance();
+  }
+
+  function openCardModal(cardId){
+    editingCardId = cardId || null;
+    const c = cardId ? (window.creditCards||[]).find(x=>x.id===cardId) : null;
+    document.getElementById('card-modal-title').textContent = c ? 'Editar cartão' : 'Novo cartão';
+    document.getElementById('card-name').value = c ? c.name : '';
+    document.getElementById('card-limit').value = c ? c.limit : '';
+    document.getElementById('card-delete-btn').style.visibility = c ? 'visible' : 'hidden';
+    document.getElementById('card-overlay').classList.add('open');
+  }
+  function closeCardModal(){ document.getElementById('card-overlay').classList.remove('open'); }
+  async function saveCard(){
+    const name = document.getElementById('card-name').value.trim();
+    const limit = parseFloat(document.getElementById('card-limit').value);
+    if(!name || isNaN(limit) || limit <= 0){ alert('Preencha o nome e o limite do cartão.'); return; }
+    if(editingCardId){
+      const idx = window.creditCards.findIndex(x=>x.id===editingCardId);
+      window.creditCards[idx] = { ...window.creditCards[idx], name, limit };
+    } else {
+      window.creditCards.push({ id: uid(), name, limit });
+    }
+    await persist(); closeCardModal(); renderFinance();
+  }
+  async function deleteCard(){
+    if(!editingCardId) return;
+    if(!confirm('Excluir este cartão? Os lançamentos feitos nele permanecem, mas deixam de ter um cartão associado.')) return;
+    window.creditCards = window.creditCards.filter(x=>x.id!==editingCardId);
+    window.transactions.forEach(t=>{ if(t.cardId===editingCardId) t.cardId = null; });
+    await persist(); closeCardModal(); renderFinance();
+  }
+
+  function openCategoryModal(){
+    renderCategoryManageList();
+    document.getElementById('category-overlay').classList.add('open');
+  }
+  function closeCategoryModal(){ document.getElementById('category-overlay').classList.remove('open'); }
+  function renderCategoryManageList(){
+    const wrap = document.getElementById('category-manage-list'); wrap.innerHTML = '';
+    (window.categories||[]).forEach(c=>{
+      const row = document.createElement('div'); row.className = 'subtask-edit-row';
+      const colorInput = document.createElement('input'); colorInput.type = 'color'; colorInput.value = c.hex;
+      colorInput.style.cssText = 'width:28px; height:28px; padding:0; border:none; border-radius:6px; cursor:pointer; flex-shrink:0;';
+      const textInput = document.createElement('input'); textInput.type = 'text'; textInput.value = c.label;
+      textInput.style.cssText = 'flex:1; border:1px solid var(--line); border-radius:6px; padding:5px 8px; background:var(--surface); font-size:13px;';
+      const delBtn = document.createElement('button'); delBtn.className = 'subtask-del'; delBtn.type = 'button'; delBtn.textContent = '✕';
+      colorInput.oninput = async ()=>{ c.hex = colorInput.value; await persist(); renderFinance(); };
+      textInput.onchange = async ()=>{ const v = textInput.value.trim(); if(v){ c.label = v; await persist(); renderFinance(); } else { textInput.value = c.label; } };
+      delBtn.onclick = async ()=>{
+        if(window.categories.length <= 1){ alert('Mantenha ao menos uma categoria.'); return; }
+        if(!confirm('Excluir a categoria "' + c.label + '"? Lançamentos que a usam passam a aparecer com a categoria restante.')) return;
+        window.categories = window.categories.filter(x=>x.id!==c.id);
+        await persist(); renderCategoryManageList(); renderFinance();
+      };
+      row.appendChild(colorInput); row.appendChild(textInput); row.appendChild(delBtn);
+      wrap.appendChild(row);
+    });
+  }
+  async function addCategoryField(){
+    const nameInput = document.getElementById('category-new-name');
+    const colorInput = document.getElementById('category-new-color');
+    const name = nameInput.value.trim(); if(!name) return;
+    window.categories.push({ id: uid(), label: name, hex: colorInput.value || '#9CA3AF' });
+    nameInput.value = ''; colorInput.value = '#9CA3AF';
+    await persist(); renderCategoryManageList(); renderFinance();
+  }
+
+  function getOpenInstallmentGroups(){
+    const groups = {};
+    (window.transactions||[]).forEach(t=>{
+      if(!t.installmentGroupId) return;
+      (groups[t.installmentGroupId] = groups[t.installmentGroupId] || []).push(t);
+    });
+    const today = todayStr();
+    return Object.values(groups).map(list=>{
+      list.sort((a,b)=> a.installmentNumber - b.installmentNumber);
+      const remaining = list.filter(t=> t.date > today);
+      const paid = list.length - remaining.length;
+      return {
+        groupId: list[0].installmentGroupId,
+        description: list[0].description.replace(/\s*\(\d+\/\d+\)$/, ''),
+        total: list.length,
+        paid,
+        remainingCount: remaining.length,
+        totalRemaining: remaining.reduce((s,t)=>s+t.amount,0),
+        nextDate: remaining[0] ? remaining[0].date : null,
+        nextAmount: remaining[0] ? remaining[0].amount : null,
+        category: list[0].category
+      };
+    }).filter(g => g.remainingCount > 0).sort((a,b)=> (a.nextDate||'').localeCompare(b.nextDate||''));
+  }
+
+  function renderFinance(){
+    const view = document.getElementById('view-finance');
+    if(!view) return;
+    const monthStr = financeMonthStr();
+    const label = document.getElementById('finance-month-label');
+    if(label) label.textContent = MONTHS[financeDate.getMonth()] + ' ' + financeDate.getFullYear();
+
+    const monthTx = (window.transactions||[]).filter(t => t.date && t.date.slice(0,7) === monthStr);
+    const totalReceitas = monthTx.filter(t=>t.type==='receita').reduce((s,t)=>s+t.amount,0);
+    const totalDespesas = monthTx.filter(t=>t.type==='despesa').reduce((s,t)=>s+t.amount,0);
+    const saldo = totalReceitas - totalDespesas;
+    const totalFatura = monthTx.filter(t=>t.method==='cartao').reduce((s,t)=>s+t.amount,0);
+
+    document.getElementById('stat-receitas').textContent = formatBRL(totalReceitas);
+    document.getElementById('stat-despesas').textContent = formatBRL(totalDespesas);
+    const saldoEl = document.getElementById('stat-saldo');
+    saldoEl.textContent = formatBRL(saldo);
+    saldoEl.className = 'finance-stat-value ' + (saldo >= 0 ? 'positive' : 'negative');
+    document.getElementById('stat-fatura').textContent = formatBRL(totalFatura);
+
+    // Category donut (despesas only)
+    const byCategory = {};
+    monthTx.filter(t=>t.type==='despesa').forEach(t=>{ byCategory[t.category] = (byCategory[t.category]||0) + t.amount; });
+    const catEntries = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]);
+    const donut = document.getElementById('finance-donut');
+    const legend = document.getElementById('finance-legend');
+    document.getElementById('donut-amt').textContent = formatBRL(totalDespesas).replace(',00','').replace(/\u00a0/g,' ');
+    legend.innerHTML = '';
+    if(catEntries.length === 0){
+      donut.style.background = 'var(--bg)';
+      legend.innerHTML = '<div class="finance-empty-note">Nenhuma despesa lançada neste mês ainda.</div>';
+    } else {
+      let acc = 0; const stops = [];
+      catEntries.forEach(([key, val])=>{
+        const pct = (val / totalDespesas) * 100;
+        const cm = categoryMeta(key);
+        stops.push(cm.hex + ' ' + acc.toFixed(2) + '% ' + (acc+pct).toFixed(2) + '%');
+        acc += pct;
+      });
+      donut.style.background = 'conic-gradient(' + stops.join(',') + ')';
+      catEntries.forEach(([key,val])=>{
+        const cm = categoryMeta(key);
+        const pct = ((val/totalDespesas)*100).toFixed(0);
+        const row = document.createElement('div'); row.className = 'finance-legend-row';
+        row.innerHTML = '<span class="finance-legend-dot" style="background:' + cm.hex + '"></span>' +
+          '<span class="finance-legend-label">' + cm.label + '</span>' +
+          '<span class="finance-legend-value">' + formatBRL(val) + ' · ' + pct + '%</span>';
+        legend.appendChild(row);
+      });
+    }
+
+    // Credit cards
+    const cardsList = document.getElementById('credit-cards-list'); cardsList.innerHTML = '';
+    if((window.creditCards||[]).length === 0){
+      cardsList.innerHTML = '<div class="finance-empty-note">Nenhum cartão cadastrado ainda.</div>';
+    } else {
+      window.creditCards.forEach(c=>{
+        const used = monthTx.filter(t=>t.method==='cartao' && t.cardId===c.id).reduce((s,t)=>s+t.amount,0);
+        const pct = Math.min(100, (used / c.limit) * 100);
+        const barClass = pct >= 90 ? 'danger' : (pct >= 70 ? 'warn' : '');
+        const row = document.createElement('div'); row.className = 'credit-card-row';
+        row.innerHTML =
+          '<div class="credit-card-top"><span class="credit-card-name">💳 ' + escapeHtml(c.name) + '</span>' +
+          '<span class="credit-card-amounts">' + formatBRL(used) + ' / ' + formatBRL(c.limit) + '</span></div>' +
+          '<div class="credit-card-bar-track"><div class="credit-card-bar-fill ' + barClass + '" style="width:' + pct + '%"></div></div>';
+        row.style.cursor = 'pointer';
+        row.onclick = ()=> openCardModal(c.id);
+        cardsList.appendChild(row);
+      });
+    }
+
+    // Open installment purchases
+    const instListEl = document.getElementById('installments-list');
+    const openGroups = getOpenInstallmentGroups();
+    instListEl.innerHTML = '';
+    if(openGroups.length === 0){
+      instListEl.innerHTML = '<div class="finance-empty-note">Nenhuma compra parcelada em aberto.</div>';
+    } else {
+      openGroups.forEach(g=>{
+        const cm = categoryMeta(g.category);
+        const pct = (g.paid / g.total) * 100;
+        const row = document.createElement('div'); row.className = 'credit-card-row';
+        row.innerHTML =
+          '<div class="credit-card-top"><span class="credit-card-name"><span class="finance-legend-dot" style="background:' + cm.hex + '; display:inline-block;"></span> ' + escapeHtml(g.description) + '</span>' +
+          '<span class="credit-card-amounts">' + g.paid + '/' + g.total + ' pagas</span></div>' +
+          '<div class="credit-card-bar-track"><div class="credit-card-bar-fill" style="width:' + pct + '%"></div></div>' +
+          '<div class="credit-card-amounts" style="margin-top:4px;">Falta ' + formatBRL(g.totalRemaining) + ' · próxima em ' + formatDatePt(g.nextDate) + ' (' + formatBRL(g.nextAmount) + ')</div>';
+        instListEl.appendChild(row);
+      });
+    }
+
+    // Transaction list
+    const txListEl = document.getElementById('tx-list'); txListEl.innerHTML = '';
+    const sortedTx = [...monthTx].sort((a,b)=> b.date.localeCompare(a.date));
+    if(sortedTx.length === 0){
+      txListEl.innerHTML = '<div class="empty-state"><div class="big">Nenhum lançamento neste mês</div>Adicione uma receita ou despesa para começar.</div>';
+    } else {
+      sortedTx.forEach(t=>{
+        const cm = categoryMeta(t.category);
+        const card = t.cardId ? (window.creditCards||[]).find(c=>c.id===t.cardId) : null;
+        const row = document.createElement('div'); row.className = 'tx-row';
+        const dot = document.createElement('span'); dot.className = 'tx-cat-dot'; dot.style.background = cm.hex;
+        const main = document.createElement('div'); main.className = 'tx-main'; main.onclick = ()=> openTxModal(t.id);
+        main.innerHTML = '<div class="tx-desc">' + escapeHtml(t.description) + '</div>' +
+          '<div class="tx-meta"><span>' + formatDatePt(t.date) + '</span><span>' + cm.label + '</span><span>' + methodLabel(t.method) + (card ? ' · ' + escapeHtml(card.name) : '') + '</span></div>';
+        const amount = document.createElement('div'); amount.className = 'tx-amount ' + t.type;
+        amount.textContent = (t.type === 'receita' ? '+ ' : '- ') + formatBRL(t.amount);
+        const actions = document.createElement('div'); actions.className = 'row-icon-actions';
+        const editBtn = document.createElement('button'); editBtn.className = 'card-icon-btn'; editBtn.title = 'Editar'; editBtn.textContent = '✎';
+        editBtn.onclick = (e)=>{ e.stopPropagation(); openTxModal(t.id); };
+        const delBtn = document.createElement('button'); delBtn.className = 'card-icon-btn danger'; delBtn.title = 'Excluir'; delBtn.textContent = '🗑';
+        delBtn.onclick = (e)=>{ e.stopPropagation(); deleteTxDirect(t.id); };
+        actions.appendChild(editBtn); actions.appendChild(delBtn);
+        row.appendChild(dot); row.appendChild(main); row.appendChild(amount); row.appendChild(actions);
+        txListEl.appendChild(row);
+      });
+    }
+  }
+
+  /* ---------------- Chat assistente ---------------- */
+  function renderChat(){
+    const box = document.getElementById('chat-messages'); box.innerHTML = '';
+    const msgs = window.chatMessages || [];
+    if(msgs.length === 0){
+      const hint = document.createElement('div'); hint.className = 'chat-msg assistant';
+      hint.textContent = 'Oi! Me conte um compromisso, tarefa ou gasto/recebimento e eu já cadastro pra você. Ex: "reunião com o financeiro quinta às 10h, importante" ou "recebi 300 de freelance hoje".';
+      box.appendChild(hint);
+    }
+    msgs.forEach(m=>{
+      const el = document.createElement('div'); el.className = 'chat-msg ' + m.role + (m.thinking ? ' thinking' : '');
+      el.textContent = m.text;
+      if(m.actionLabel){
+        const chip = document.createElement('div'); chip.className = 'chip-inline';
+        chip.style.background = m.actionColor || '#22C55E'; chip.textContent = m.actionLabel;
+        el.appendChild(document.createElement('br')); el.appendChild(chip);
+      }
+      box.appendChild(el);
+    });
+    box.scrollTop = box.scrollHeight;
+  }
+  function weekdayPt(date){
+    const names = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+    return names[date.getDay()];
+  }
+  async function sendChatMessage(){
+    const apiKey = localStorage.getItem('anthropic_api_key');
+    if(!apiKey){ openSettingsModal(); return; }
+    const input = document.getElementById('chat-input');
+    const text = input.value.trim(); if(!text) return;
+    input.value = '';
+    const sendBtn = document.getElementById('chat-send-btn'); sendBtn.disabled = true;
+    window.chatMessages.push({ role:'user', text }); renderChat();
+    window.chatMessages.push({ role:'assistant', text:'Pensando...', thinking:true }); renderChat();
+    const now = new Date(); const todayIso = todayStr();
+    const categoryNames = (window.categories||[]).map(c=>c.label).join(', ');
+    const cardNames = (window.creditCards||[]).map(c=>c.name).join(', ') || 'nenhum cadastrado';
+    const systemPrompt = 'Você é um assistente de agenda e finanças pessoais em português do Brasil. ' +
+      'Hoje é ' + weekdayPt(now) + ', ' + todayIso + '. ' +
+      'Analise a mensagem do usuário e decida a ação. Responda SOMENTE com um JSON válido, sem markdown, sem texto fora do JSON, no formato: ' +
+      '{"action":"appointment" | "task" | "transaction" | "chat", "title":"string", "date":"YYYY-MM-DD ou vazio", "time":"HH:MM ou vazio, só para appointment", "priority":"urgente" | "importante" | "normal" | "pessoal", "txType":"receita" | "despesa" (só para transaction), "amount": number (só para transaction, sem símbolo de moeda), "category":"string (só para transaction, escolha uma das categorias disponíveis abaixo, ou \\"Outros\\")", "method":"dinheiro" | "debito" | "pix" | "cartao" (só para transaction), "cardName":"string (só para transaction, nome do cartão mencionado, exatamente como na lista abaixo, ou vazio)", "reply":"mensagem curta e amigável confirmando ou pedindo esclarecimento, em português"}. ' +
+      'Use action "appointment" para compromissos com hora/lugar marcados, "task" para tarefas/afazeres (podem não ter hora), "transaction" quando o usuário informar um gasto ou recebimento de dinheiro (ex: "gastei 45 no mercado", "recebi 300 de freelance", "coloquei 80 no cartão"), e "chat" quando for só conversa ou quando faltar informação essencial (nesse caso pergunte no campo reply e deixe os demais campos vazios). ' +
+      'Categorias disponíveis: ' + categoryNames + '. Cartões de crédito cadastrados: ' + cardNames + '. Se o usuário mencionar um cartão que não está na lista, deixe cardName vazio e use method "dinheiro". ' +
+      'Calcule datas relativas ("amanhã", "sexta-feira", "semana que vem") a partir da data de hoje informada acima. Se não houver indicação clara de prioridade, use "normal". Para transaction sem valor claro, use action "chat" e pergunte o valor.';
+    try{
+      const history = (window.chatMessages||[]).filter(m=>!m.thinking).slice(-8).map(m=>({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: systemPrompt, messages: history })
+      });
+      const data = await response.json();
+      if(data.error){ throw new Error(data.error.message || 'Erro na API'); }
+      const textBlocks = (data.content || []).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+      const clean = textBlocks.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+      window.chatMessages.pop();
+      const priority = parsed.priority || 'normal';
+      const pm = priorityMeta(priority);
+      if(parsed.action === 'appointment' && parsed.date){
+        window.appointments.push({ id: uid(), title: parsed.title || text, date: parsed.date, time: parsed.time || '', priority, notified:false });
+        await persist(); renderCalendar(); renderReminders();
+        window.chatMessages.push({ role:'assistant', text: parsed.reply || 'Compromisso adicionado!', actionLabel: 'Compromisso · ' + formatDatePt(parsed.date) + (parsed.time ? ' às ' + parsed.time : ''), actionColor: pm.hex });
+      } else if(parsed.action === 'task'){
+        window.tasks.push({ id: uid(), title: parsed.title || text, dueDate: parsed.date || '', priority, done:false, subtasks:[], notified:false });
+        await persist(); renderTasks(); renderReminders();
+        window.chatMessages.push({ role:'assistant', text: parsed.reply || 'Tarefa adicionada!', actionLabel: 'Tarefa' + (parsed.date ? ' · ' + formatDatePt(parsed.date) : ''), actionColor: pm.hex });
+      } else if(parsed.action === 'transaction' && parsed.amount){
+        const txType = parsed.txType === 'receita' ? 'receita' : 'despesa';
+        const catMatch = (window.categories||[]).find(c=> c.label.toLowerCase() === String(parsed.category||'').toLowerCase());
+        const category = catMatch ? catMatch.id : categoryMeta(null).id;
+        let method = parsed.method || 'dinheiro';
+        let cardId = null;
+        if(parsed.cardName){
+          const cardMatch = (window.creditCards||[]).find(c=> c.name.toLowerCase() === String(parsed.cardName).toLowerCase());
+          if(cardMatch){ method = 'cartao'; cardId = cardMatch.id; }
+        }
+        const date = parsed.date || todayIso;
+        const amount = parseFloat(parsed.amount);
+        window.transactions.push({ id: uid(), type: txType, description: parsed.title || text, amount, date, category, method, cardId });
+        await persist(); renderFinance();
+        const cm = categoryMeta(category);
+        window.chatMessages.push({ role:'assistant', text: parsed.reply || (txType === 'receita' ? 'Receita registrada!' : 'Despesa registrada!'), actionLabel: (txType === 'receita' ? 'Receita' : 'Despesa') + ' · ' + formatBRL(amount), actionColor: cm.hex });
+      } else {
+        window.chatMessages.push({ role:'assistant', text: parsed.reply || 'Pode me dar mais detalhes?' });
+      }
+    } catch(err){
+      console.error('Erro no assistente', err);
+      window.chatMessages.pop();
+      window.chatMessages.push({ role:'assistant', text:'Não consegui processar agora (verifique sua chave de API em Configurações). Pode tentar de novo?' });
+    }
+    await persist(); renderChat(); sendBtn.disabled = false;
+  }
+
+  window.switchTab = switchTab; window.renderCalendar = renderCalendar; window.renderTasks = renderTasks;
+  window.renderKanban = renderKanban; window.setTaskView = setTaskView;
+  window.renderBoardSwitcher = renderBoardSwitcher; window.selectBoard = selectBoard;
+  window.openBoardModal = openBoardModal; window.closeBoardModal = closeBoardModal;
+  window.saveBoard = saveBoard; window.deleteBoard = deleteBoard;
+  window.renderFinance = renderFinance; window.changeFinanceMonth = changeFinanceMonth; window.goFinanceToday = goFinanceToday;
+  window.openTxModal = openTxModal; window.closeTxModal = closeTxModal; window.saveTx = saveTx; window.deleteTx = deleteTx;
+  window.deleteTxDirect = deleteTxDirect; window.toggleTxCardField = toggleTxCardField;
+  window.toggleInstallmentFields = toggleInstallmentFields;
+  window.openCardModal = openCardModal; window.closeCardModal = closeCardModal; window.saveCard = saveCard; window.deleteCard = deleteCard;
+  window.openCategoryModal = openCategoryModal; window.closeCategoryModal = closeCategoryModal; window.addCategoryField = addCategoryField;
+  window.renderReminders = renderReminders; window.renderChat = renderChat; window.changeMonth = changeMonth;
+  window.goToday = goToday; window.openApptModal = openApptModal; window.closeApptModal = closeApptModal;
+  window.renderPlanner = renderPlanner; window.changePlannerDay = changePlannerDay; window.goPlannerToday = goPlannerToday;
+  window.plannerDateStr = plannerDateStr; window.openApptModalAtTime = openApptModalAtTime;
+  window.saveAppt = saveAppt; window.deleteAppt = deleteAppt; window.openDayPanel = openDayPanel;
+  window.closeDayPanel = closeDayPanel; window.addFromDayPanel = addFromDayPanel; window.setFilter = setFilter;
+  window.toggleTask = toggleTask; window.removeTaskDirect = removeTaskDirect; window.openTaskModal = openTaskModal;
+  window.closeTaskModal = closeTaskModal; window.addSubtaskField = addSubtaskField; window.saveTask = saveTask;
+  window.deleteTask = deleteTask; window.sendChatMessage = sendChatMessage; window.handleSearchInput = handleSearchInput;
+  window.openSettingsModal = openSettingsModal; window.closeSettingsModal = closeSettingsModal;
+  window.saveSettings = saveSettings; window.todayStr = todayStr; window.handleEnableNotifications = handleEnableNotifications;
+  window.handleGoogleConnect = handleGoogleConnect; window.handleImportGoogleEvents = handleImportGoogleEvents;
+
+  document.querySelectorAll('.overlay').forEach(ov=>{
+    ov.addEventListener('click', (e)=>{ if(e.target===ov) ov.classList.remove('open'); });
+  });
+
+  // apply locally-saved theme immediately (before cloud data arrives) so there's no flash of default theme
+  try{
+    const saved = localStorage.getItem('agenda_theme');
+    if(saved) applyTheme(JSON.parse(saved), false);
+    else applyTheme(window.currentTheme, false);
+  } catch(e){ applyTheme(window.currentTheme, false); }
+
+  renderCalendar();
+  renderChat();
+  renderBoardSwitcher();
+  if(window.categories.length === 0) window.categories = DEFAULT_CATEGORIES.map(c=>({...c}));
+  renderFinance();
+  setTaskView(taskViewMode);
+  window.addEventListener('load', ()=> moveSegIndicator('calendar'));
+
+  pollForGoogleReady(()=>{
+    initGoogleClient();
+    if(localStorage.getItem('google_calendar_connected') === 'true' && googleTokenClient){
+      googleTokenClient.requestAccessToken({ prompt:'' });
+    }
+  });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(e => console.warn('SW falhou', e));
+    });
+  }
+</script>
+</body>
+</html>
