@@ -121,6 +121,18 @@
 
   .overlay{ position:fixed; inset:0; background:rgba(22,24,33,.4); backdrop-filter:blur(2px); display:none; align-items:center; justify-content:center; z-index:50; padding:16px; }
   .overlay.open{ display:flex; }
+
+  .lembrete-overlay{ position:fixed; inset:0; background:rgba(22,24,33,.55); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; z-index:200; padding:16px; }
+  .lembrete-overlay.open{ display:flex; }
+  .lembrete-box{ background:var(--surface); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); width:100%; max-width:400px; overflow:hidden; border:1px solid var(--line); }
+  .lembrete-head{ background:var(--accent); color:#fff; padding:14px 20px; font-weight:700; font-size:15px; display:flex; align-items:center; justify-content:space-between; }
+  .lembrete-count{ font-size:12px; font-weight:600; opacity:.85; }
+  .lembrete-body{ padding:20px; }
+  .lembrete-when{ font-size:22px; font-weight:700; margin-bottom:4px; font-family:var(--font-display); }
+  .lembrete-title{ font-size:16px; font-weight:600; margin-bottom:10px; }
+  .lembrete-notes{ font-size:13.5px; color:var(--ink-soft); white-space:pre-wrap; max-height:140px; overflow-y:auto; }
+  .lembrete-actions{ display:flex; gap:10px; padding:16px 20px; border-top:1px solid var(--line); }
+  .lembrete-actions button{ flex:1; }
   .modal{ background:var(--surface); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); width:100%; max-width:440px; padding:26px; max-height:88vh; overflow-y:auto; }
   .modal h2{ font-family:var(--font-display); font-weight:700; font-size:20px; margin:0 0 18px; }
   .field{ margin-bottom:15px; }
@@ -576,6 +588,16 @@
     <h2 id="task-modal-title">Nova tarefa</h2>
     <div class="field"><label>Título</label><input type="text" id="task-title" placeholder="Ex: Enviar proposta" /></div>
     <div class="field"><label>Data de conclusão</label><input type="date" id="task-date" /></div>
+    <div class="field">
+      <label style="display:flex; align-items:center; gap:8px; text-transform:none; cursor:pointer;">
+        <input type="checkbox" id="task-lembrete-ativo" style="width:16px;height:16px;accent-color:var(--accent);" onchange="document.getElementById('task-lembrete-time-field').style.display=this.checked?'block':'none';" />
+        Lembrete (notificação na tela até confirmar)
+      </label>
+      <div id="task-lembrete-time-field" style="display:none; margin-top:8px;">
+        <input type="time" id="task-lembrete-time" />
+        <div class="empty-note" style="margin-top:4px;">Avisa na data de conclusão, no horário escolhido.</div>
+      </div>
+    </div>
     <div class="field"><label>Prioridade</label><div class="color-row" id="task-color-row"></div></div>
     <div class="field"><label>Status</label><div class="color-row" id="task-status-row"></div></div>
     <div class="field">
@@ -593,6 +615,25 @@
         <button class="btn-ghost" onclick="closeTaskModal()">Cancelar</button>
         <button class="btn-primary" onclick="saveTask()">Salvar</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- LEMBRETE POPUP (compromissos e tarefas com lembrete vencido; só fecha com ação) -->
+<div class="lembrete-overlay" id="lembrete-overlay">
+  <div class="lembrete-box">
+    <div class="lembrete-head">
+      <span>🔔 Lembrete</span>
+      <span class="lembrete-count" id="lembrete-count"></span>
+    </div>
+    <div class="lembrete-body">
+      <div class="lembrete-when" id="lembrete-when"></div>
+      <div class="lembrete-title" id="lembrete-title"></div>
+      <div class="lembrete-notes" id="lembrete-notes"></div>
+    </div>
+    <div class="lembrete-actions">
+      <button class="btn-ghost" onclick="lembreteAlterar()">Alterar horário</button>
+      <button class="btn-primary" onclick="lembreteConcluir()">Concluído</button>
     </div>
   </div>
 </div>
@@ -1338,9 +1379,14 @@
       dayAppts.forEach(a=>{
         const row = document.createElement('div'); row.className = 'day-panel-item';
         row.style.borderLeftColor = priorityMeta(a.priority).hex;
+        const doneCheck = document.createElement('input'); doneCheck.type = 'checkbox'; doneCheck.checked = !!a.done;
+        doneCheck.style.cssText = 'width:16px;height:16px;accent-color:var(--accent);flex-shrink:0;margin-top:2px;';
+        doneCheck.onclick = (e)=>{ e.stopPropagation(); };
+        doneCheck.onchange = async ()=>{ a.done = doneCheck.checked; await persist(); renderCalendar(); checkDueLembretes(); };
         const titleWrap = document.createElement('div'); titleWrap.style.cssText = 'display:flex; flex:1; gap:10px; cursor:pointer; min-width:0;';
         titleWrap.onclick = ()=> openApptModal(dateStr, a.id);
-        titleWrap.innerHTML = '<div class="t">' + (a.time || '--:--') + '</div><div class="title">' + escapeHtml(a.title) + (a.planning ? ' <span class="has-notes" title="Tem anotações">📝</span>' : '') + '</div>';
+        titleWrap.innerHTML = '<div class="t">' + (a.time || '--:--') + '</div><div class="title' + (a.done ? '" style="text-decoration:line-through; opacity:.6;' : '') + '">' + escapeHtml(a.title) + (a.planning ? ' <span class="has-notes" title="Tem anotações">📝</span>' : '') + '</div>';
+        row.appendChild(doneCheck);
         const actions = document.createElement('div'); actions.className = 'row-icon-actions';
         const editBtn = document.createElement('button'); editBtn.className = 'card-icon-btn'; editBtn.title = 'Editar'; editBtn.textContent = '✎';
         editBtn.onclick = (e)=>{ e.stopPropagation(); openApptModal(dateStr, a.id); };
@@ -1489,7 +1535,7 @@
         const startDate = ev.start.date || (ev.start.dateTime||'').slice(0,10);
         const startTime = ev.start.dateTime ? ev.start.dateTime.slice(11,16) : '';
         if(!startDate) return;
-        window.appointments.push({ id: uid(), title: ev.summary || '(sem título)', date: startDate, time: startTime, priority:'normal', planning: ev.description||'', googleEventId: ev.id, notified:false });
+        window.appointments.push({ id: uid(), title: ev.summary || '(sem título)', date: startDate, time: startTime, priority:'normal', planning: ev.description||'', googleEventId: ev.id, notified:false, done:false });
         count++;
       });
       await persist(); renderCalendar(); renderReminders();
@@ -1529,7 +1575,7 @@
       window.appointments[idx] = { ...window.appointments[idx], title, date, time, priority, planning };
       apptObj = window.appointments[idx];
     } else {
-      apptObj = { id: uid(), title, date, time, priority, planning, notified:false };
+      apptObj = { id: uid(), title, date, time, priority, planning, notified:false, done:false };
       window.appointments.push(apptObj);
     }
     if(googleAccessToken){
@@ -1814,6 +1860,9 @@
     document.getElementById('task-title').value = t ? t.title : '';
     document.getElementById('task-date').value = t ? (t.dueDate||'') : todayStr();
     document.getElementById('task-planning').value = t ? (t.planning||'') : '';
+    document.getElementById('task-lembrete-ativo').checked = t ? !!t.lembreteAtivo : false;
+    document.getElementById('task-lembrete-time').value = t ? (t.lembreteTime||'') : '';
+    document.getElementById('task-lembrete-time-field').style.display = (t && t.lembreteAtivo) ? 'block' : 'none';
     buildColorRow('task-color-row', t ? t.priority : 'normal');
     buildStatusRow('task-status-row', t ? taskStatus(t) : (defaultStatus || 'todo'));
     document.getElementById('task-delete-btn').style.visibility = t ? 'visible' : 'hidden';
@@ -1850,11 +1899,13 @@
     const done = status === 'done';
     const subtasks = editingSubtasks;
     const planning = document.getElementById('task-planning').value.trim();
+    const lembreteAtivo = document.getElementById('task-lembrete-ativo').checked;
+    const lembreteTime = document.getElementById('task-lembrete-time').value;
     if(editingTaskId){
       const idx = window.tasks.findIndex(t=>t.id===editingTaskId);
       const boardId = window.tasks[idx].boardId || window.activeBoardId;
-      window.tasks[idx] = { ...window.tasks[idx], title, dueDate, priority, subtasks, status, done, planning, boardId };
-    } else { window.tasks.push({ id: uid(), title, dueDate, priority, done, status, subtasks, planning, boardId: window.activeBoardId, notified:false }); }
+      window.tasks[idx] = { ...window.tasks[idx], title, dueDate, priority, subtasks, status, done, planning, boardId, lembreteAtivo, lembreteTime };
+    } else { window.tasks.push({ id: uid(), title, dueDate, priority, done, status, subtasks, planning, boardId: window.activeBoardId, notified:false, lembreteAtivo, lembreteTime }); }
     await persist(); closeTaskModal(); renderTasks(); renderKanban(); renderReminders();
   }
   async function deleteTask(){
@@ -1865,6 +1916,7 @@
 
   /* ---------------- Reminders banner ---------------- */
   function renderReminders(){
+    checkDueLembretes();
     const banner = document.getElementById('reminders-banner');
     const today = todayStr();
     const todayAppts = (window.appointments||[]).filter(a=>a.date===today).sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99'));
@@ -1883,6 +1935,85 @@
     });
     banner.classList.add('show');
     renderPlanner();
+  }
+
+  /* ---------------- Lembrete popup (bloqueante até concluir ou alterar) ---------------- */
+  let currentLembreteItem = null; // { kind:'appt'|'task', id, ms, title, notes, dateStr, timeStr }
+  const BLOCKING_OVERLAY_IDS = ['appt-overlay','task-overlay','day-overlay','settings-overlay','tx-overlay','card-overlay','category-overlay','board-overlay'];
+
+  function dueDateTimeMs(dateStr, timeStr){
+    if(!dateStr) return null;
+    const t = (timeStr && timeStr.length === 5) ? timeStr : '00:00';
+    const ms = new Date(dateStr + 'T' + t + ':00').getTime();
+    return Number.isNaN(ms) ? null : ms;
+  }
+
+  function getDueLembretes(){
+    const nowMs = Date.now();
+    const items = [];
+    (window.appointments||[]).forEach(a=>{
+      if(a.done) return;
+      const ms = dueDateTimeMs(a.date, a.time);
+      if(ms !== null && ms <= nowMs) items.push({ kind:'appt', id:a.id, ms, title:a.title, notes:a.planning||'', dateStr:a.date, timeStr:a.time||'' });
+    });
+    (window.tasks||[]).forEach(t=>{
+      if(t.done || !t.lembreteAtivo || !t.dueDate) return;
+      const ms = dueDateTimeMs(t.dueDate, t.lembreteTime);
+      if(ms !== null && ms <= nowMs) items.push({ kind:'task', id:t.id, ms, title:t.title, notes:t.planning||'', dateStr:t.dueDate, timeStr:t.lembreteTime||'' });
+    });
+    items.sort((x,y)=> x.ms - y.ms);
+    return items;
+  }
+
+  function checkDueLembretes(){
+    const somethingElseOpen = BLOCKING_OVERLAY_IDS.some(id=>{
+      const el = document.getElementById(id); return el && el.classList.contains('open');
+    });
+    if(somethingElseOpen) return;
+    const due = getDueLembretes();
+    if(due.length === 0){
+      currentLembreteItem = null;
+      document.getElementById('lembrete-overlay').classList.remove('open');
+      return;
+    }
+    const stillDue = currentLembreteItem && due.find(d=> d.kind===currentLembreteItem.kind && d.id===currentLembreteItem.id);
+    const item = stillDue || due[0];
+    currentLembreteItem = item;
+    renderLembretePopup(item, due.length);
+  }
+
+  function renderLembretePopup(item, totalCount){
+    const [y,m,d] = item.dateStr.split('-');
+    document.getElementById('lembrete-when').textContent = d + '/' + m + '/' + y + (item.timeStr ? ' às ' + item.timeStr : '');
+    document.getElementById('lembrete-title').textContent = (item.kind==='task' ? 'Tarefa: ' : '') + item.title;
+    document.getElementById('lembrete-notes').textContent = item.notes || '';
+    document.getElementById('lembrete-count').textContent = totalCount > 1 ? ('1 de ' + totalCount) : '';
+    document.getElementById('lembrete-overlay').classList.add('open');
+  }
+
+  async function lembreteConcluir(){
+    if(!currentLembreteItem) return;
+    const { kind, id } = currentLembreteItem;
+    if(kind === 'appt'){
+      const a = (window.appointments||[]).find(x=>x.id===id); if(a) a.done = true;
+      renderCalendar();
+      if(dayPanelDate && document.getElementById('day-overlay').classList.contains('open')) openDayPanel(dayPanelDate);
+    } else {
+      const t = (window.tasks||[]).find(x=>x.id===id);
+      if(t){ t.done = true; t.status = 'done'; }
+      renderTasks(); renderKanban();
+    }
+    currentLembreteItem = null;
+    await persist();
+    checkDueLembretes();
+  }
+
+  function lembreteAlterar(){
+    if(!currentLembreteItem) return;
+    const { kind, id } = currentLembreteItem;
+    document.getElementById('lembrete-overlay').classList.remove('open');
+    if(kind === 'appt') openApptModal(null, id);
+    else openTaskModal(id);
   }
 
   /* ---------------- Finanças ---------------- */
@@ -2309,7 +2440,7 @@
       const priority = parsed.priority || 'normal';
       const pm = priorityMeta(priority);
       if(parsed.action === 'appointment' && parsed.date){
-        window.appointments.push({ id: uid(), title: parsed.title || text, date: parsed.date, time: parsed.time || '', priority, notified:false });
+        window.appointments.push({ id: uid(), title: parsed.title || text, date: parsed.date, time: parsed.time || '', priority, notified:false, done:false });
         await persist(); renderCalendar(); renderReminders();
         window.chatMessages.push({ role:'assistant', text: parsed.reply || 'Compromisso adicionado!', actionLabel: 'Compromisso · ' + formatDatePt(parsed.date) + (parsed.time ? ' às ' + parsed.time : ''), actionColor: pm.hex });
       } else if(parsed.action === 'task'){
@@ -2370,6 +2501,10 @@
   document.querySelectorAll('.overlay').forEach(ov=>{
     ov.addEventListener('click', (e)=>{ if(e.target===ov) ov.classList.remove('open'); });
   });
+
+  // Verifica compromissos/lembretes vencidos a cada 30s (cobre o caso de o horário
+  // chegar sem nenhuma mudança de dados que dispararia checkDueLembretes via renderReminders).
+  setInterval(()=>{ if(typeof checkDueLembretes==='function') checkDueLembretes(); }, 30000);
 
   // apply locally-saved theme immediately (before cloud data arrives) so there's no flash of default theme
   try{
