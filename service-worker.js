@@ -1,4 +1,4 @@
-const CACHE_NAME = 'minha-agenda-v2';
+const CACHE_NAME = 'minha-agenda-v3';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -60,16 +60,30 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Cache-first for the app shell. Everything else (Firebase, Anthropic API) goes to the network,
+// Everything outside this origin (Firebase, Anthropic API) goes straight to the network,
 // since this app's data is live/cloud-synced and should not be served stale.
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   const isShellRequest = url.origin === self.location.origin;
-  if (!isShellRequest) return; // let network handle Firebase/Anthropic requests directly
+  if (!isShellRequest) return;
 
+  // Page loads (index.html): network-first, so a new deploy shows up immediately for
+  // anyone online. The cache is only used as an offline fallback.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((resp) => {
+          const copy = resp.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return resp;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html')))
+    );
+    return;
+  }
+
+  // Other shell assets (icons, manifest): cache-first, fine since they rarely change.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request);
-    })
+    caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
 });
