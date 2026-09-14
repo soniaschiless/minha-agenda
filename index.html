@@ -131,8 +131,9 @@
   .lembrete-when{ font-size:22px; font-weight:700; margin-bottom:4px; font-family:var(--font-display); }
   .lembrete-title{ font-size:16px; font-weight:600; margin-bottom:10px; }
   .lembrete-notes{ font-size:13.5px; color:var(--ink-soft); white-space:pre-wrap; max-height:140px; overflow-y:auto; }
-  .lembrete-actions{ display:flex; gap:10px; padding:16px 20px; border-top:1px solid var(--line); }
-  .lembrete-actions button{ flex:1; }
+  .lembrete-actions{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:16px 20px; border-top:1px solid var(--line); }
+  .lembrete-actions-right{ display:flex; gap:10px; }
+  .lembrete-actions-right button{ flex:1; }
   .modal{ background:var(--surface); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); width:100%; max-width:440px; padding:26px; max-height:88vh; overflow-y:auto; }
   .modal h2{ font-family:var(--font-display); font-weight:700; font-size:20px; margin:0 0 18px; }
   .field{ margin-bottom:15px; }
@@ -648,8 +649,11 @@
       <div class="lembrete-notes" id="lembrete-notes"></div>
     </div>
     <div class="lembrete-actions">
-      <button class="btn-ghost" onclick="lembreteAlterar()">Alterar horário</button>
-      <button class="btn-primary" onclick="lembreteConcluir()">Concluído</button>
+      <button class="link-btn" onclick="lembreteFechar()">Fechar</button>
+      <div class="lembrete-actions-right">
+        <button class="btn-ghost" onclick="lembreteAlterar()">Alterar horário</button>
+        <button class="btn-primary" onclick="lembreteConcluir()">Concluído</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1967,6 +1971,8 @@
   /* ---------------- Lembrete popup (bloqueante até concluir ou alterar) ---------------- */
   let currentLembreteItem = null; // { kind:'appt'|'task', id, ms, title, notes, dateStr, timeStr }
   const BLOCKING_OVERLAY_IDS = ['appt-overlay','task-overlay','day-overlay','settings-overlay','tx-overlay','card-overlay','category-overlay','board-overlay'];
+  const LEMBRETE_SNOOZE_MS = 5 * 60 * 1000;
+  let lembreteSnoozes = {}; // key `${kind}:${id}` -> ms timestamp até quando o item fica escondido
 
   function dueDateTimeMs(dateStr, timeStr){
     if(!dateStr) return null;
@@ -1975,16 +1981,21 @@
     return Number.isNaN(ms) ? null : ms;
   }
 
+  function isLembreteSnoozed(kind, id, nowMs){
+    const until = lembreteSnoozes[kind + ':' + id];
+    return until && nowMs < until;
+  }
+
   function getDueLembretes(){
     const nowMs = Date.now();
     const items = [];
     (window.appointments||[]).forEach(a=>{
-      if(a.done) return;
+      if(a.done || isLembreteSnoozed('appt', a.id, nowMs)) return;
       const ms = dueDateTimeMs(a.date, a.time);
       if(ms !== null && ms <= nowMs) items.push({ kind:'appt', id:a.id, ms, title:a.title, notes:a.planning||'', dateStr:a.date, timeStr:a.time||'' });
     });
     (window.tasks||[]).forEach(t=>{
-      if(t.done || !t.lembreteAtivo || !t.dueDate) return;
+      if(t.done || !t.lembreteAtivo || !t.dueDate || isLembreteSnoozed('task', t.id, nowMs)) return;
       const ms = dueDateTimeMs(t.dueDate, t.lembreteTime);
       if(ms !== null && ms <= nowMs) items.push({ kind:'task', id:t.id, ms, title:t.title, notes:t.planning||'', dateStr:t.dueDate, timeStr:t.lembreteTime||'' });
     });
@@ -2041,6 +2052,15 @@
     document.getElementById('lembrete-overlay').classList.remove('open');
     if(kind === 'appt') openApptModal(null, id);
     else openTaskModal(id);
+  }
+
+  function lembreteFechar(){
+    if(!currentLembreteItem) return;
+    const { kind, id } = currentLembreteItem;
+    lembreteSnoozes[kind + ':' + id] = Date.now() + LEMBRETE_SNOOZE_MS;
+    currentLembreteItem = null;
+    document.getElementById('lembrete-overlay').classList.remove('open');
+    checkDueLembretes();
   }
 
   /* ---------------- Finanças ---------------- */
