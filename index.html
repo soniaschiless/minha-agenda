@@ -172,6 +172,9 @@
   .subtask-edit-row input[type=checkbox]{ width:16px; height:16px; flex-shrink:0; accent-color:var(--accent); }
   .subtask-edit-row .st-title{ flex:1; font-size:13px; }
   .subtask-edit-row .st-title.done{ text-decoration:line-through; color:var(--ink-soft); }
+  .subtask-edit-row .st-title-input{ flex:1; font-size:13px; font-family:var(--font-body); color:var(--ink); border:1px solid transparent; background:transparent; border-radius:4px; padding:3px 5px; min-width:0; }
+  .subtask-edit-row .st-title-input.done{ text-decoration:line-through; color:var(--ink-soft); }
+  .subtask-edit-row .st-title-input:focus{ outline:none; border-color:var(--line); background:var(--surface); }
   .subtask-del{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:14px; flex-shrink:0; }
   .subtask-del:hover{ color:var(--p-urgente); }
   .subtask-add-row{ display:flex; gap:8px; }
@@ -240,7 +243,7 @@
   @media (max-width:820px){ .planner-layout{ flex-direction:column; } }
 
   /* ---------- Finanças ---------- */
-  .finance-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:22px; }
+  .finance-stats{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:22px; }
   .finance-stat-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:14px 16px; box-shadow:var(--shadow-sm); }
   .finance-stat-label{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft); margin-bottom:6px; }
   .finance-stat-value{ font-family:var(--font-display); font-weight:700; font-size:19px; }
@@ -284,6 +287,11 @@
   .type-toggle button{ flex:1; padding:10px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--bg); font-weight:600; font-size:13.5px; cursor:pointer; color:var(--ink-soft); }
   .type-toggle button.active.receita{ background:var(--p-normal); color:#fff; border-color:var(--p-normal); }
   .type-toggle button.active.despesa{ background:var(--p-urgente); color:#fff; border-color:var(--p-urgente); }
+  .type-toggle button.active.paid-yes{ background:var(--p-normal); color:#fff; border-color:var(--p-normal); }
+  .type-toggle button.active.paid-no{ background:var(--p-urgente); color:#fff; border-color:var(--p-urgente); }
+  .tx-status-badge{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:3px 10px; border-radius:10px; border:none; cursor:pointer; white-space:nowrap; }
+  .tx-status-badge.paid{ color:var(--p-normal); background:#E7F9EE; }
+  .tx-status-badge.pending{ color:var(--p-urgente); background:#FFEDEF; }
   @media (max-width:820px){ .finance-stats{ grid-template-columns:repeat(2,1fr); } }
   .kanban-add-btn:hover{ background:rgba(0,0,0,.06); color:var(--ink); }
   .status-dot-todo{ background:#9CA3AF; }
@@ -503,6 +511,7 @@
         <div class="finance-stat-card"><div class="finance-stat-label">Despesas</div><div class="finance-stat-value negative" id="stat-despesas">R$ 0,00</div></div>
         <div class="finance-stat-card"><div class="finance-stat-label">Saldo</div><div class="finance-stat-value" id="stat-saldo">R$ 0,00</div></div>
         <div class="finance-stat-card"><div class="finance-stat-label">Fatura do cartão</div><div class="finance-stat-value" id="stat-fatura">R$ 0,00</div></div>
+        <div class="finance-stat-card"><div class="finance-stat-label">Em aberto</div><div class="finance-stat-value negative" id="stat-aberto">R$ 0,00</div></div>
       </div>
 
       <div class="finance-dashboard-row">
@@ -523,7 +532,14 @@
         <div id="installments-list"></div>
       </div>
 
-      <h1 class="page-title" style="font-size:18px; margin-bottom:12px;">Lançamentos do mês</h1>
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+        <h1 class="page-title" style="font-size:18px; margin:0;">Lançamentos do mês</h1>
+        <div style="display:flex; gap:8px;" id="tx-status-filter-row">
+          <button class="filter-chip active" data-status-filter="todos" onclick="setFinanceStatusFilter('todos')">Todos</button>
+          <button class="filter-chip" data-status-filter="pago" onclick="setFinanceStatusFilter('pago')">Pagos</button>
+          <button class="filter-chip" data-status-filter="aberto" onclick="setFinanceStatusFilter('aberto')">Em aberto</button>
+        </div>
+      </div>
       <div class="tx-list" id="tx-list"></div>
     </div>
 
@@ -663,6 +679,12 @@
       <div class="type-toggle" id="tx-type-toggle">
         <button type="button" data-type="receita">Receita</button>
         <button type="button" data-type="despesa">Despesa</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="type-toggle" id="tx-paid-toggle">
+        <button type="button" data-paid="true">Pago</button>
+        <button type="button" data-paid="false">Em aberto</button>
       </div>
     </div>
     <div class="field"><label>Descrição</label><input type="text" id="tx-desc" placeholder="Ex: Supermercado" /></div>
@@ -1016,6 +1038,7 @@
   window.transactions = []; window.creditCards = [];
   let financeDate = new Date();
   let editingTxId = null, editingCardId = null;
+  let financeStatusFilter = 'todos';
   const FONT_PAIRS = {
     moderna:  { label:'Moderna',   display:"'Sora', sans-serif",         body:"'Inter', sans-serif" },
     editorial:{ label:'Editorial', display:"'Fraunces', serif",          body:"'Inter', sans-serif" },
@@ -1877,9 +1900,13 @@
     editingSubtasks.forEach(s=>{
       const row = document.createElement('div'); row.className = 'subtask-edit-row';
       row.innerHTML = '<input type="checkbox" ' + (s.done?'checked':'') + ' />' +
-        '<span class="st-title ' + (s.done?'done':'') + '">' + escapeHtml(s.title) + '</span>' +
+        '<input type="text" class="st-title-input ' + (s.done?'done':'') + '" value="' + escapeHtml(s.title) + '" />' +
         '<button class="subtask-del" type="button">✕</button>';
-      row.querySelector('input').onchange = ()=>{ s.done = !s.done; renderSubtaskEditList(); };
+      row.querySelector('input[type=checkbox]').onchange = ()=>{ s.done = !s.done; renderSubtaskEditList(); };
+      const titleInput = row.querySelector('.st-title-input');
+      titleInput.oninput = ()=>{ s.title = titleInput.value; };
+      titleInput.onblur = ()=>{ s.title = titleInput.value.trim() || s.title; titleInput.value = s.title; };
+      titleInput.onkeydown = (e)=>{ if(e.key==='Enter'){ e.preventDefault(); titleInput.blur(); } };
       row.querySelector('.subtask-del').onclick = ()=>{ editingSubtasks = editingSubtasks.filter(x=>x.id!==s.id); renderSubtaskEditList(); };
       wrap.appendChild(row);
     });
@@ -2026,12 +2053,34 @@
     wrap.querySelectorAll('button').forEach(b=>{
       b.classList.toggle('active', b.dataset.type===selected);
       b.classList.toggle(b.dataset.type, true);
-      b.onclick = ()=>{ wrap.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); };
+      b.onclick = ()=>{ wrap.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); updatePaidLabels(); };
     });
   }
   function getSelectedType(){
     const sel = document.querySelector('#tx-type-toggle button.active');
     return sel ? sel.dataset.type : 'despesa';
+  }
+  function buildPaidToggle(selected){
+    const wrap = document.getElementById('tx-paid-toggle');
+    wrap.querySelectorAll('button').forEach(b=>{
+      const val = b.dataset.paid === 'true';
+      b.classList.toggle('active', val === selected);
+      b.classList.add(val ? 'paid-yes' : 'paid-no');
+      b.onclick = ()=>{ wrap.querySelectorAll('button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); };
+    });
+    updatePaidLabels();
+  }
+  function getSelectedPaid(){
+    const sel = document.querySelector('#tx-paid-toggle button.active');
+    return sel ? sel.dataset.paid === 'true' : true;
+  }
+  function updatePaidLabels(){
+    const wrap = document.getElementById('tx-paid-toggle');
+    if(!wrap) return;
+    const yesBtn = wrap.querySelector('[data-paid="true"]');
+    const noBtn = wrap.querySelector('[data-paid="false"]');
+    if(getSelectedType() === 'receita'){ yesBtn.textContent = 'Recebido'; noBtn.textContent = 'A receber'; }
+    else { yesBtn.textContent = 'Pago'; noBtn.textContent = 'Em aberto'; }
   }
   function buildCategorySelect(selected){
     const sel = document.getElementById('tx-category'); sel.innerHTML = '';
@@ -2095,6 +2144,7 @@
     const t = txId ? window.transactions.find(x=>x.id===txId) : null;
     document.getElementById('tx-modal-title').textContent = t ? 'Editar lançamento' : 'Novo lançamento';
     buildTypeToggle(t ? t.type : 'despesa');
+    buildPaidToggle(t ? t.paid !== false : true);
     document.getElementById('tx-desc').value = t ? t.description : '';
     document.getElementById('tx-amount').value = t ? t.amount : '';
     document.getElementById('tx-date').value = t ? t.date : (financeMonthStr() + '-' + String(new Date().getDate()).padStart(2,'0'));
@@ -2116,6 +2166,7 @@
     const category = document.getElementById('tx-category').value;
     const method = document.getElementById('tx-method').value;
     const cardId = method === 'cartao' ? document.getElementById('tx-card').value : null;
+    const paid = getSelectedPaid();
 
     const installmentCb = document.getElementById('tx-installment-toggle');
     const isNewInstallment = !editingTxId && installmentCb && installmentCb.checked;
@@ -2133,15 +2184,15 @@
         const instDate = addMonthsToDateStr(date, i);
         window.transactions.push({
           id: uid(), type, description: description + ' (' + (i+1) + '/' + count + ')', amount: instAmount,
-          date: instDate, category, method, cardId,
+          date: instDate, category, method, cardId, paid,
           installmentGroupId: groupId, installmentNumber: i+1, installmentTotal: count
         });
       }
     } else if(editingTxId){
       const idx = window.transactions.findIndex(x=>x.id===editingTxId);
-      window.transactions[idx] = { ...window.transactions[idx], type, description, amount, date, category, method, cardId };
+      window.transactions[idx] = { ...window.transactions[idx], type, description, amount, date, category, method, cardId, paid };
     } else {
-      window.transactions.push({ id: uid(), type, description, amount, date, category, method, cardId });
+      window.transactions.push({ id: uid(), type, description, amount, date, category, method, cardId, paid });
     }
     await persist(); closeTxModal(); renderFinance();
   }
@@ -2273,6 +2324,7 @@
     const totalDespesas = monthTx.filter(t=>t.type==='despesa').reduce((s,t)=>s+t.amount,0);
     const saldo = totalReceitas - totalDespesas;
     const totalFatura = monthTx.filter(t=>t.method==='cartao').reduce((s,t)=>s+t.amount,0);
+    const totalAberto = monthTx.filter(t=>t.type==='despesa' && t.paid===false).reduce((s,t)=>s+t.amount,0);
 
     document.getElementById('stat-receitas').textContent = formatBRL(totalReceitas);
     document.getElementById('stat-despesas').textContent = formatBRL(totalDespesas);
@@ -2280,6 +2332,7 @@
     saldoEl.textContent = formatBRL(saldo);
     saldoEl.className = 'finance-stat-value ' + (saldo >= 0 ? 'positive' : 'negative');
     document.getElementById('stat-fatura').textContent = formatBRL(totalFatura);
+    document.getElementById('stat-aberto').textContent = formatBRL(totalAberto);
 
     // Category donut (despesas only)
     const byCategory = {};
@@ -2354,18 +2407,31 @@
 
     // Transaction list
     const txListEl = document.getElementById('tx-list'); txListEl.innerHTML = '';
-    const sortedTx = [...monthTx].sort((a,b)=> b.date.localeCompare(a.date));
+    const filteredTx = monthTx.filter(t=>{
+      if(financeStatusFilter === 'pago') return t.paid !== false;
+      if(financeStatusFilter === 'aberto') return t.paid === false;
+      return true;
+    });
+    const sortedTx = [...filteredTx].sort((a,b)=> b.date.localeCompare(a.date));
     if(sortedTx.length === 0){
-      txListEl.innerHTML = '<div class="empty-state"><div class="big">Nenhum lançamento neste mês</div>Adicione uma receita ou despesa para começar.</div>';
+      txListEl.innerHTML = financeStatusFilter === 'todos'
+        ? '<div class="empty-state"><div class="big">Nenhum lançamento neste mês</div>Adicione uma receita ou despesa para começar.</div>'
+        : '<div class="empty-state"><div class="big">Nenhum lançamento com esse status</div>Ajuste o filtro acima para ver outros lançamentos deste mês.</div>';
     } else {
       sortedTx.forEach(t=>{
         const cm = categoryMeta(t.category);
         const card = t.cardId ? (window.creditCards||[]).find(c=>c.id===t.cardId) : null;
+        const isPaid = t.paid !== false;
         const row = document.createElement('div'); row.className = 'tx-row';
         const dot = document.createElement('span'); dot.className = 'tx-cat-dot'; dot.style.background = cm.hex;
         const main = document.createElement('div'); main.className = 'tx-main'; main.onclick = ()=> openTxModal(t.id);
         main.innerHTML = '<div class="tx-desc">' + escapeHtml(t.description) + '</div>' +
           '<div class="tx-meta"><span>' + formatDatePt(t.date) + '</span><span>' + cm.label + '</span><span>' + methodLabel(t.method) + (card ? ' · ' + escapeHtml(card.name) : '') + '</span></div>';
+        const statusBadge = document.createElement('button'); statusBadge.type = 'button';
+        statusBadge.className = 'tx-status-badge ' + (isPaid ? 'paid' : 'pending');
+        statusBadge.title = 'Clique para alternar';
+        statusBadge.textContent = isPaid ? (t.type === 'receita' ? 'Recebido' : 'Pago') : (t.type === 'receita' ? 'A receber' : 'Em aberto');
+        statusBadge.onclick = (e)=>{ e.stopPropagation(); toggleTxPaidDirect(t.id); };
         const amount = document.createElement('div'); amount.className = 'tx-amount ' + t.type;
         amount.textContent = (t.type === 'receita' ? '+ ' : '- ') + formatBRL(t.amount);
         const actions = document.createElement('div'); actions.className = 'row-icon-actions';
@@ -2374,10 +2440,21 @@
         const delBtn = document.createElement('button'); delBtn.className = 'card-icon-btn danger'; delBtn.title = 'Excluir'; delBtn.textContent = '🗑';
         delBtn.onclick = (e)=>{ e.stopPropagation(); deleteTxDirect(t.id); };
         actions.appendChild(editBtn); actions.appendChild(delBtn);
-        row.appendChild(dot); row.appendChild(main); row.appendChild(amount); row.appendChild(actions);
+        row.appendChild(dot); row.appendChild(main); row.appendChild(statusBadge); row.appendChild(amount); row.appendChild(actions);
         txListEl.appendChild(row);
       });
     }
+  }
+  async function toggleTxPaidDirect(id){
+    const t = (window.transactions||[]).find(x=>x.id===id);
+    if(!t) return;
+    t.paid = t.paid === false ? true : false;
+    await persist(); renderFinance();
+  }
+  function setFinanceStatusFilter(f){
+    financeStatusFilter = f;
+    document.querySelectorAll('#tx-status-filter-row .filter-chip').forEach(b=>b.classList.toggle('active', b.dataset.statusFilter===f));
+    renderFinance();
   }
 
   /* ---------------- Chat assistente ---------------- */
@@ -2482,6 +2559,7 @@
   window.renderFinance = renderFinance; window.changeFinanceMonth = changeFinanceMonth; window.goFinanceToday = goFinanceToday;
   window.openTxModal = openTxModal; window.closeTxModal = closeTxModal; window.saveTx = saveTx; window.deleteTx = deleteTx;
   window.deleteTxDirect = deleteTxDirect; window.toggleTxCardField = toggleTxCardField;
+  window.setFinanceStatusFilter = setFinanceStatusFilter;
   window.toggleInstallmentFields = toggleInstallmentFields;
   window.openCardModal = openCardModal; window.closeCardModal = closeCardModal; window.saveCard = saveCard; window.deleteCard = deleteCard;
   window.openCategoryModal = openCategoryModal; window.closeCategoryModal = closeCategoryModal; window.addCategoryField = addCategoryField;
