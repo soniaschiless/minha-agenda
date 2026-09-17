@@ -53,9 +53,12 @@
   .logout-btn{ border:1px solid var(--line); background:var(--surface); padding:8px 14px; border-radius:20px; cursor:pointer; font-size:12.5px; color:var(--ink-soft); box-shadow:var(--shadow-sm); flex:1; }
 
   /* ---------- Sidebar nav ---------- */
-  .sidebar{ width:230px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--line); display:flex; flex-direction:column; padding:20px 14px; }
-  .sidebar-brand{ display:flex; align-items:center; justify-content:space-between; padding:6px 8px 22px; }
+  .sidebar{ width:230px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--line); display:flex; flex-direction:column; padding:20px 14px; transition:width .2s ease; }
+  .sidebar-brand{ display:flex; align-items:center; justify-content:space-between; gap:6px; padding:6px 8px 22px; }
+  .sidebar-brand-actions{ display:flex; align-items:center; gap:4px; flex-shrink:0; }
   .sidebar-close-btn{ display:none; border:none; background:none; font-size:20px; line-height:1; color:var(--ink-soft); cursor:pointer; padding:4px; }
+  .sidebar-collapse-btn{ border:1px solid var(--line); background:var(--surface); width:24px; height:24px; border-radius:50%; cursor:pointer; font-size:11px; color:var(--ink-soft); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .sidebar-collapse-btn:hover{ background:var(--bg); }
   .sidebar-nav{ display:flex; flex-direction:column; gap:3px; flex:1; }
   .side-nav-btn{ display:flex; align-items:center; gap:11px; text-align:left; width:100%; border:none; background:none; padding:11px 14px; border-radius:var(--radius-sm); font-family:var(--font-body); font-weight:600; font-size:14px; cursor:pointer; color:var(--ink-soft); transition:background .15s ease, color .15s ease; }
   .side-nav-btn .side-nav-icon{ font-size:16px; width:18px; text-align:center; flex-shrink:0; }
@@ -65,6 +68,17 @@
   .sidebar-footer-actions{ display:flex; align-items:center; gap:8px; }
   .user-email{ font-size:12px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .sidebar-backdrop{ display:none; }
+
+  /* Collapsed (icon-only) sidebar — desktop only */
+  .sidebar.collapsed{ width:72px; }
+  .sidebar.collapsed .sidebar-brand{ justify-content:center; padding:6px 0 22px; }
+  .sidebar.collapsed .sidebar-brand .brand{ display:none; }
+  .sidebar.collapsed .side-nav-btn{ justify-content:center; padding:11px 0; gap:0; }
+  .sidebar.collapsed .side-nav-btn .side-nav-label{ display:none; }
+  .sidebar.collapsed .sidebar-footer{ align-items:center; }
+  .sidebar.collapsed .sidebar-footer .user-email{ display:none; }
+  .sidebar.collapsed .sidebar-footer-actions{ flex-direction:column; }
+  .sidebar.collapsed .logout-btn{ display:none; }
 
   .content{ flex:1; min-width:0; display:flex; flex-direction:column; }
   .mobile-topbar{ display:none; align-items:center; gap:12px; padding:16px 18px 0; }
@@ -351,9 +365,17 @@
   .api-key-banner button{ border:none; background:#FFB020; color:#fff; padding:7px 14px; border-radius:var(--radius-sm); font-size:12px; font-weight:600; cursor:pointer; }
 
   @media (max-width:820px){
-    .sidebar{ position:fixed; top:0; left:0; height:100vh; z-index:300; transform:translateX(-100%); transition:transform .25s ease; box-shadow:var(--shadow-md); }
+    .sidebar{ position:fixed; top:0; left:0; height:100vh; width:230px !important; z-index:300; transform:translateX(-100%); transition:transform .25s ease; box-shadow:var(--shadow-md); }
     .sidebar.open{ transform:translateX(0); }
     .sidebar-close-btn{ display:block; }
+    .sidebar-collapse-btn{ display:none; }
+    .sidebar.collapsed .sidebar-brand .brand{ display:block; }
+    .sidebar.collapsed .side-nav-btn{ justify-content:flex-start; padding:11px 14px; gap:11px; }
+    .sidebar.collapsed .side-nav-btn .side-nav-label{ display:inline; }
+    .sidebar.collapsed .sidebar-footer{ align-items:stretch; }
+    .sidebar.collapsed .sidebar-footer .user-email{ display:block; }
+    .sidebar.collapsed .sidebar-footer-actions{ flex-direction:row; }
+    .sidebar.collapsed .logout-btn{ display:block; }
     .sidebar-backdrop{ display:block; position:fixed; inset:0; background:rgba(22,24,33,.45); z-index:290; opacity:0; pointer-events:none; transition:opacity .25s ease; }
     .sidebar-backdrop.open{ opacity:1; pointer-events:auto; }
     .mobile-topbar{ display:flex; }
@@ -398,14 +420,17 @@
   <div class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <span class="brand">Minha Agenda</span>
-      <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Fechar menu">✕</button>
+      <div class="sidebar-brand-actions">
+        <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" title="Recolher painel" aria-label="Recolher painel">◀</button>
+        <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Fechar menu">✕</button>
+      </div>
     </div>
     <nav class="sidebar-nav">
-      <button class="side-nav-btn active" data-tab="calendar" onclick="switchTab('calendar')"><span class="side-nav-icon">📅</span>Calendário</button>
-      <button class="side-nav-btn" data-tab="planner" onclick="switchTab('planner')"><span class="side-nav-icon">🗓️</span>Planejador</button>
-      <button class="side-nav-btn" data-tab="tasks" onclick="switchTab('tasks')"><span class="side-nav-icon">✅</span>Tarefas</button>
-      <button class="side-nav-btn" data-tab="finance" onclick="switchTab('finance')"><span class="side-nav-icon">💰</span>Finanças</button>
-      <button class="side-nav-btn" data-tab="chat" onclick="switchTab('chat')"><span class="side-nav-icon">💬</span>Assistente</button>
+      <button class="side-nav-btn active" data-tab="calendar" onclick="switchTab('calendar')" title="Calendário"><span class="side-nav-icon">📅</span><span class="side-nav-label">Calendário</span></button>
+      <button class="side-nav-btn" data-tab="planner" onclick="switchTab('planner')" title="Planejador"><span class="side-nav-icon">🗓️</span><span class="side-nav-label">Planejador</span></button>
+      <button class="side-nav-btn" data-tab="tasks" onclick="switchTab('tasks')" title="Tarefas"><span class="side-nav-icon">✅</span><span class="side-nav-label">Tarefas</span></button>
+      <button class="side-nav-btn" data-tab="finance" onclick="switchTab('finance')" title="Finanças"><span class="side-nav-icon">💰</span><span class="side-nav-label">Finanças</span></button>
+      <button class="side-nav-btn" data-tab="chat" onclick="switchTab('chat')" title="Assistente"><span class="side-nav-icon">💬</span><span class="side-nav-label">Assistente</span></button>
     </nav>
     <div class="sidebar-footer">
       <span class="user-email" id="user-email"></span>
@@ -1194,6 +1219,19 @@
   function closeSidebar(){
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebar-backdrop').classList.remove('open');
+  }
+  function applySidebarCollapsed(collapsed){
+    document.getElementById('sidebar').classList.toggle('collapsed', collapsed);
+    const btn = document.getElementById('sidebar-collapse-btn');
+    btn.textContent = collapsed ? '▶' : '◀';
+    const label = collapsed ? 'Expandir painel' : 'Recolher painel';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+  function toggleSidebarCollapse(){
+    const collapsed = !document.getElementById('sidebar').classList.contains('collapsed');
+    applySidebarCollapsed(collapsed);
+    try{ localStorage.setItem('sidebarCollapsed', collapsed ? '1' : ''); }catch(e){}
   }
 
   /* ---------------- Settings modal ---------------- */
@@ -2588,6 +2626,7 @@
   }
 
   window.switchTab = switchTab; window.openSidebar = openSidebar; window.closeSidebar = closeSidebar;
+  window.toggleSidebarCollapse = toggleSidebarCollapse;
   window.renderCalendar = renderCalendar; window.renderTasks = renderTasks;
   window.renderKanban = renderKanban; window.setTaskView = setTaskView;
   window.renderBoardSwitcher = renderBoardSwitcher; window.selectBoard = selectBoard;
@@ -2634,6 +2673,7 @@
   if(window.categories.length === 0) window.categories = DEFAULT_CATEGORIES.map(c=>({...c}));
   renderFinance();
   setTaskView(taskViewMode);
+  try{ applySidebarCollapsed(localStorage.getItem('sidebarCollapsed') === '1'); }catch(e){}
 
   pollForGoogleReady(()=>{
     initGoogleClient();
